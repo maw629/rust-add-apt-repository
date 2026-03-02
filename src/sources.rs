@@ -21,7 +21,7 @@ pub struct SourceEntry {
     pub line: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum SourceType {
     Binary,  // deb
     Source,  // deb-src

@@ -296,21 +296,84 @@ impl SourcesList {
 
         // Write each file
         for (file_path, entries) in files_content {
-            let mut content = String::new();
-            for entry in entries {
-                content.push_str(&entry.line);
-                content.push('\n');
-            }
-
             // Ensure parent directory exists
             if let Some(parent) = file_path.parent() {
                 utils::create_dir_if_not_exists(parent)?;
             }
 
-            // Write with proper permissions (644)
-            utils::write_string_to_file(&file_path, &content, 0o644)?;
+            // Detect file format by extension
+            let is_deb822 = file_path.extension()
+                .and_then(|ext| ext.to_str())
+                .map(|ext| ext == "sources")
+                .unwrap_or(false);
+
+            if is_deb822 {
+                // Save as DEB822 format (.sources files)
+                self.save_as_deb822(&file_path, &entries)?;
+            } else {
+                // Save as one-line format (.list files)
+                let mut content = String::new();
+                for entry in entries {
+                    content.push_str(&entry.line);
+                    content.push('\n');
+                }
+                utils::write_string_to_file(&file_path, &content, 0o644)?;
+            }
         }
 
+        Ok(())
+    }
+
+    /// Save entries as DEB822 format (for .sources files)
+    fn save_as_deb822(&self, file_path: &Path, entries: &[&SourceEntry]) -> Result<()> {
+        use crate::deb822::{Deb822Stanza, write_deb822_file};
+
+        // Group entries by (uri, dist, components) to create stanzas
+        let mut stanza_map: HashMap<(String, String, Vec<String>), Vec<SourceType>> = HashMap::new();
+
+        for entry in entries {
+            let key = (
+                entry.uri.clone(),
+                entry.dist.clone(),
+                entry.components.clone(),
+            );
+            stanza_map
+                .entry(key)
+                .or_insert_with(Vec::new)
+                .push(entry.entry_type);
+        }
+
+        // Create DEB822 stanzas from grouped entries
+        let mut stanzas = Vec::new();
+        for ((uri, dist, components), types) in stanza_map {
+            let mut stanza = Deb822Stanza::new(file_path.to_path_buf());
+            
+            // Deduplicate types
+            let mut unique_types = types.clone();
+            unique_types.sort();
+            unique_types.dedup();
+            stanza.types = unique_types;
+            
+            stanza.uris = vec![uri];
+            stanza.suites = vec![dist];
+            stanza.components = components;
+            stanza.enabled = true;
+
+            // Try to preserve Signed-By if it was in the original file
+            // Check if any entry has a keyring reference (for PPA/custom repos)
+            // For system files, use the default Ubuntu keyring
+            if file_path.file_name()
+                .and_then(|n| n.to_str())
+                .map(|n| n == "ubuntu.sources")
+                .unwrap_or(false)
+            {
+                stanza.signed_by = Some("/usr/share/keyrings/ubuntu-archive-keyring.gpg".to_string());
+            }
+
+            stanzas.push(stanza);
+        }
+
+        write_deb822_file(file_path, &stanzas)?;
         Ok(())
     }
 
