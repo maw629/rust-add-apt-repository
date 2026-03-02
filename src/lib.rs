@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod cli;
+pub mod cloudarchive;
 pub mod config;
 pub mod error;
 pub mod gpg;
@@ -48,6 +49,9 @@ fn add_repository(repo_spec: &str, args: &Cli) -> Result<()> {
     let mut repo = if let Some(ppa_spec) = &args.repo_spec.ppa {
         // PPA shortcut
         ppa::create_ppa_repository(ppa_spec, args.enable_source > 0, &args.component, args.login)?
+    } else if let Some(cloud_spec) = &args.repo_spec.cloud {
+        // Cloud Archive shortcut
+        cloudarchive::create_cloud_archive_repository(cloud_spec, args.enable_source > 0, &args.component)?
     } else if let Some(uri) = &args.repo_spec.uri {
         // URI shortcut
         let dist = args.dist.as_deref();
@@ -58,6 +62,9 @@ fn add_repository(repo_spec: &str, args: &Cli) -> Result<()> {
     } else if repo_spec.starts_with("ppa:") {
         // Positional PPA argument
         ppa::create_ppa_repository(repo_spec, args.enable_source > 0, &args.component, args.login)?
+    } else if repo_spec.starts_with("cloud-archive:") || repo_spec.starts_with("uca:") {
+        // Positional Cloud Archive argument
+        cloudarchive::create_cloud_archive_repository(repo_spec, args.enable_source > 0, &args.component)?
     } else if repo_spec.starts_with("deb ") || repo_spec.starts_with("deb-src ") {
         // Positional argument with sources.list line
         parse_sourceslist_line(repo_spec)?
@@ -202,6 +209,9 @@ fn remove_repository(repo_spec: &str, dry_run: bool) -> Result<()> {
     let repo = if repo_spec.starts_with("ppa:") {
         // PPA removal
         ppa::create_ppa_repository(repo_spec, false, &[], false)?
+    } else if repo_spec.starts_with("cloud-archive:") || repo_spec.starts_with("uca:") {
+        // Cloud Archive removal
+        cloudarchive::create_cloud_archive_repository(repo_spec, false, &[])?
     } else if repo_spec.starts_with("deb ") || repo_spec.starts_with("deb-src ") {
         parse_sourceslist_line(repo_spec)?
     } else if repo_spec.starts_with("http://") 
