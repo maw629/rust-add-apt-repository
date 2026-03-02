@@ -1,5 +1,8 @@
 # rust-add-apt-repository
 
+[![License: GPL v2+](https://img.shields.io/badge/License-GPL%20v2+-blue.svg)](https://www.gnu.org/licenses/gpl-2.0)
+[![Version](https://img.shields.io/badge/version-0.2.0-green.svg)](https://github.com/maw629/rust-add-apt-repository/releases)
+
 A Rust implementation of the Debian/Ubuntu `add-apt-repository` command, designed for behavioral compatibility with the Python version from `software-properties-common` while being installable alongside the original.
 
 ## Project Status
@@ -341,7 +344,11 @@ Guidelines:
 
 ## License
 
-[To be determined - likely GPL-2+ to match original]
+This project is licensed under the GNU General Public License v2.0 or later (GPL-2.0-or-later).
+
+See the [LICENSE](LICENSE) file for the full license text.
+
+This license matches the original Python implementation from `software-properties-common` to ensure legal compatibility.
 
 ## Acknowledgments
 
