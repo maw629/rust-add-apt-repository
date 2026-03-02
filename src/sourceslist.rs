@@ -2,7 +2,7 @@ use crate::config;
 use crate::error::Result;
 use crate::sources::{SourceEntry, SourceType};
 use crate::utils;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -12,6 +12,8 @@ pub struct SourcesList {
     pub entries: Vec<SourceEntry>,
     /// Backup extension for file backups
     backup_ext: Option<String>,
+    /// Track which files have been modified (need backup and rewrite)
+    pub(crate) modified_files: HashSet<PathBuf>,
 }
 
 impl SourcesList {
@@ -20,6 +22,7 @@ impl SourcesList {
         let mut sources_list = Self {
             entries: Vec::new(),
             backup_ext: None,
+            modified_files: HashSet::new(),
         };
         sources_list.load_all()?;
         Ok(sources_list)
@@ -30,6 +33,7 @@ impl SourcesList {
         Self {
             entries: Vec::new(),
             backup_ext: None,
+            modified_files: HashSet::new(),
         }
     }
 
@@ -134,6 +138,8 @@ impl SourcesList {
                 // Add missing components
                 existing.components.extend(new_comps);
                 existing.line = existing.to_line();
+                // Mark file as modified
+                self.modified_files.insert(existing.file.clone());
                 return Ok(idx);
             }
         }
@@ -150,6 +156,8 @@ impl SourcesList {
                 // Enable the existing disabled entry
                 existing.set_enabled(true);
                 existing.line = existing.to_line();
+                // Mark file as modified
+                self.modified_files.insert(existing.file.clone());
                 return Ok(idx);
             }
         }
@@ -157,8 +165,11 @@ impl SourcesList {
         // Create new entry
         let mut new_entry = SourceEntry::new(entry_type, uri, dist, components);
         new_entry.disabled = disabled;
-        new_entry.file = file;
+        new_entry.file = file.clone();
         new_entry.line = new_entry.to_line();
+        
+        // Mark file as modified (new entry being added)
+        self.modified_files.insert(file);
         
         self.entries.push(new_entry);
         Ok(self.entries.len() - 1)
@@ -167,7 +178,9 @@ impl SourcesList {
     /// Remove a source entry
     pub fn remove(&mut self, entry: &SourceEntry) -> bool {
         if let Some(pos) = self.entries.iter().position(|e| e.matches(entry)) {
-            self.entries.remove(pos);
+            let removed_entry = self.entries.remove(pos);
+            // Mark file as modified
+            self.modified_files.insert(removed_entry.file);
             return true;
         }
         false
@@ -211,6 +224,8 @@ impl SourcesList {
             {
                 entry.set_enabled(enabled);
                 entry.line = entry.to_line();
+                // Mark file as modified
+                self.modified_files.insert(entry.file.clone());
                 count += 1;
             }
         }
@@ -294,11 +309,11 @@ impl SourcesList {
                 .push(entry);
         }
 
-        // Write each file
+        // Write each file ONLY if it was modified
         for (file_path, entries) in files_content {
-            // Ensure parent directory exists
-            if let Some(parent) = file_path.parent() {
-                utils::create_dir_if_not_exists(parent)?;
+            // Skip files that haven't been modified
+            if !self.modified_files.contains(&file_path) {
+                continue;
             }
 
             // Backup existing file before modifying (only if it exists)

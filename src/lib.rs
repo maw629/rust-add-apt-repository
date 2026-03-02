@@ -361,9 +361,11 @@ fn remove_repository(repo_spec: &str, dry_run: bool) -> Result<()> {
 
     // Disable (comment out) the entries
     let mut disabled_count = 0;
-    for (idx, _) in &found_entries {
+    for (idx, file) in &found_entries {
         sources_list.entries[*idx].set_enabled(false);
         sources_list.entries[*idx].line = sources_list.entries[*idx].to_line();
+        // Mark file as modified
+        sources_list.modified_files.insert(file.clone());
         disabled_count += 1;
     }
 
