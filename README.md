@@ -13,7 +13,7 @@ A Rust implementation of the Debian/Ubuntu `add-apt-repository` command, designe
 - ✅ Debian package available
 - ✅ Behavioral compatibility with Python version
 
-See [plan.md](plan.md) for the complete implementation roadmap.
+See [docs/development/plan.md](docs/development/plan.md) for the complete implementation roadmap.
 
 ## Features
 
@@ -161,8 +161,7 @@ For comprehensive examples covering authentication, DEB822 format, advanced scen
 - **README.md** (this file) - Quick start and overview
 
 ### Developer Documentation
-- **[plan.md](plan.md)** - Complete 13-phase implementation plan with status
-- **[source-analysis.md](source-analysis.md)** - Analysis of the original Python implementation
+- **[docs/development/](docs/development/)** - Development history, phase summaries, and implementation plans
 - **[BUILDING.md](BUILDING.md)** - Comprehensive build instructions
 - **[DEPENDENCIES.md](DEPENDENCIES.md)** - Quick reference for all required packages
 - **[WSL.md](WSL.md)** - WSL-specific instructions and differences
@@ -298,7 +297,7 @@ Each phase follows a strict workflow:
 5. Commit with meaningful messages
 6. Document in phase summary
 
-See [plan.md](plan.md) for the complete development strategy.
+See [docs/development/plan.md](docs/development/plan.md) for the complete development strategy.
 
 ## Behavioral Compatibility
 
@@ -331,7 +330,7 @@ This implementation maintains compatibility with the Python `add-apt-repository`
 
 ## Contributing
 
-This project follows an incremental, phase-based development approach. See [plan.md](plan.md) for current status and upcoming work.
+This project follows an incremental, phase-based development approach. See [docs/development/](docs/development/) for the complete development history and phase summaries.
 
 Guidelines:
 - Each feature must be fully tested

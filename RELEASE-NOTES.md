@@ -173,7 +173,7 @@ No conflicts or compatibility issues.
 - **Build Guide**: [BUILDING.md](BUILDING.md)
 - **Dependencies**: [DEPENDENCIES.md](DEPENDENCIES.md)
 - **WSL Notes**: [WSL.md](WSL.md)
-- **Phase Summaries**: PHASE-0-SUMMARY.md through PHASE-11-SUMMARY.md
+- **Phase Summaries**: See [docs/development/](docs/development/) for detailed implementation history
 
 ## Testing
 
@@ -263,7 +263,7 @@ Each phase was:
 - Committed with meaningful messages
 - Documented in phase summaries
 
-See [plan.md](plan.md) for the complete development history.
+See [docs/development/plan.md](docs/development/plan.md) for the complete development history.
 
 ## Known Limitations
 

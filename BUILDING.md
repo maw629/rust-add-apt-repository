@@ -531,7 +531,7 @@ After successfully building:
 1. Read [README.md](README.md) for usage instructions
 2. Check [WSL.md](WSL.md) if using Windows Subsystem for Linux
 3. See [DEPENDENCIES.md](DEPENDENCIES.md) for dependency details
-4. Review [plan.md](plan.md) for project roadmap
+4. Review [docs/development/plan.md](docs/development/plan.md) for project roadmap
 
 ## Getting Help
 
