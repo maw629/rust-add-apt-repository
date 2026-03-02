@@ -235,10 +235,6 @@ fn add_repository(repo_spec: &str, args: &Cli) -> Result<()> {
     // Load existing sources
     let mut sources_list = SourcesList::new()?;
     
-    // Backup before making changes
-    let backup_ext = sources_list.backup()?;
-    println!("\nBacked up sources (extension: {})", backup_ext);
-    
     // Add each entry
     let mut added = false;
     for entry in &repo.entries {
@@ -257,7 +253,7 @@ fn add_repository(repo_spec: &str, args: &Cli) -> Result<()> {
     }
     
     if added {
-        // Save changes
+        // Save changes (backup is done automatically for existing files)
         sources_list.save()?;
         println!("\nRepository added successfully.");
         
@@ -362,10 +358,6 @@ fn remove_repository(repo_spec: &str, dry_run: bool) -> Result<()> {
         println!("\nRepository not found in sources.");
         return Ok(());
     }
-
-    // Backup before making changes
-    let backup_ext = sources_list.backup()?;
-    println!("\nBacked up sources (extension: {})", backup_ext);
 
     // Disable (comment out) the entries
     let mut disabled_count = 0;

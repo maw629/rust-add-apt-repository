@@ -301,6 +301,11 @@ impl SourcesList {
                 utils::create_dir_if_not_exists(parent)?;
             }
 
+            // Backup existing file before modifying (only if it exists)
+            if file_path.exists() {
+                self.backup_file(&file_path)?;
+            }
+
             // Detect file format by extension
             let is_deb822 = file_path.extension()
                 .and_then(|ext| ext.to_str())
@@ -321,6 +326,15 @@ impl SourcesList {
             }
         }
 
+        Ok(())
+    }
+
+    /// Backup a single file with .save extension
+    fn backup_file(&self, file_path: &Path) -> Result<()> {
+        let backup_path = file_path.with_extension(format!("{}.save", 
+            file_path.extension().and_then(|s| s.to_str()).unwrap_or("")
+        ));
+        fs::copy(file_path, backup_path)?;
         Ok(())
     }
 
