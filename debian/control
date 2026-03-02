@@ -1,0 +1,26 @@
+Source: rust-add-apt-repository
+Section: admin
+Priority: optional
+Maintainer: Hardy Nguyen <maw.signup@gmail.com>
+Build-Depends: debhelper (>= 11),
+               cargo,
+               rustc (>= 1.70),
+Standards-Version: 4.5.0
+Homepage: https://github.com/maw629/rust-add-apt-repository
+
+Package: rust-add-apt-repository
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends},
+         apt (>= 1.0),
+         gnupg,
+Description: Rust implementation of add-apt-repository
+ This package provides a Rust-based implementation of the add-apt-repository
+ command, offering the same functionality as the Python version from the
+ software-properties-common package.
+ .
+ It can be installed alongside the original command and provides:
+  - PPA repository management
+  - Cloud Archive support
+  - GPG key handling
+  - Authentication for private repositories
+  - Sources list management
