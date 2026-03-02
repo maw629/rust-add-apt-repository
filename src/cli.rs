@@ -22,6 +22,10 @@ pub struct Cli {
     #[arg(short, long)]
     pub component: Vec<String>,
 
+    /// Distribution (e.g., noble, jammy) - defaults to current system
+    #[arg(long)]
+    pub dist: Option<String>,
+
     /// Add entry for this pocket
     #[arg(short, long)]
     pub pocket: Option<String>,
@@ -79,4 +83,24 @@ impl Cli {
     pub fn parse_args() -> Self {
         Self::parse()
     }
+
+    /// Get the repository specification from arguments
+    pub fn get_repo_spec(&self) -> crate::error::Result<String> {
+        if let Some(ppa) = &self.repo_spec.ppa {
+            Ok(format!("ppa:{}", ppa))
+        } else if let Some(cloud) = &self.repo_spec.cloud {
+            Ok(format!("cloud-archive:{}", cloud))
+        } else if let Some(uri) = &self.repo_spec.uri {
+            Ok(uri.clone())
+        } else if let Some(lines) = &self.repo_spec.sourceslist {
+            Ok(lines.join(" "))
+        } else if !self.repo_spec.line.is_empty() {
+            Ok(self.repo_spec.line.join(" "))
+        } else {
+            Err(crate::error::AppError::InvalidInput(
+                "No repository specified. Use --uri, --sourceslist, --ppa, --cloud, or provide a line.".to_string()
+            ))
+        }
+    }
 }
+
