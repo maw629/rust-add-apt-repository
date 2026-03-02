@@ -1,4 +1,80 @@
-# Release Notes - rust-add-apt-repository v0.1.0
+# Release Notes - rust-add-apt-repository
+
+## v0.2.0 - Bug Fixes and Documentation Improvements
+
+**Release Date**: March 2, 2026
+
+This release focuses on critical bug fixes related to backup file handling and documentation organization.
+
+### 🐛 Bug Fixes
+
+#### Backup System Improvements
+- **Fixed excessive backup creation**: Only backup files that are actually modified, not all loaded repository files
+  - Implemented dirty file tracking using `HashSet<PathBuf>`
+  - Files are only marked as modified when entries are added, removed, or changed
+  - Dramatically reduces unnecessary `.save` file creation
+  
+- **Fixed backup before deletion**: Repository files are now properly backed up before removal
+  - Ensures `.save` backup exists before deleting repository files
+  - Prevents data loss when removing repositories
+  
+- **Fixed DEB822 format preservation**: `.sources` files now maintain DEB822 format when saved
+  - Detects file format by extension (`.sources` vs `.list`)
+  - Preserves DEB822 stanza structure with proper field formatting
+  - Prevents corruption of modern Ubuntu repository files
+  
+- **Fixed backup file extension**: Changed from timestamp-based to `.save` extension
+  - Uses `.save` extension matching Python version behavior
+  - APT properly ignores `.save` files during repository scanning
+  - Prevents "invalid filename extension" warnings
+
+### 📚 Documentation
+
+#### Structure Reorganization
+- **Reorganized documentation**: Moved development artifacts to `docs/development/`
+  - Root directory reduced from 24 to 8 markdown files (-67%)
+  - Clear separation: root = user docs, docs/ = development history
+  - Added `docs/development/README.md` to explain contents
+  - Updated all references in root documentation
+
+#### New Documentation
+- **Enhanced testing guide**: Added comprehensive E2E testing procedures (TESTING.md)
+  - 5 detailed test workflows with expected results
+  - Troubleshooting and cleanup procedures
+  - WSL-specific testing considerations
+  
+- **Added common usage workflows**: Real-world examples in README.md
+  - Before/after comparisons for adding PPAs
+  - Package installation verification steps
+  - Repository management examples
+
+### 🔧 Technical Details
+
+#### Files Modified
+- `src/sourceslist.rs`: Added `modified_files` tracking, format detection, backup improvements
+- `src/lib.rs`: Mark files as modified in remove operations
+- `src/sources.rs`: Added `PartialOrd` and `Ord` traits to `SourceType`
+- Documentation files: Reorganized and enhanced
+
+#### Testing
+- All 95 unit tests passing
+- Manual E2E testing completed
+- Backup behavior verified against Python version
+
+### 📊 Statistics
+
+- **Commits**: 7 since v0.1.0
+- **Files Changed**: 20+ files
+- **Bug Fixes**: 4 critical issues resolved
+- **Documentation**: Comprehensive reorganization
+
+### 🙏 Contributors
+
+Thanks to all who tested and provided feedback!
+
+---
+
+## v0.1.0 - Initial Release
 
 **Release Date**: March 2, 2026  
 **Status**: Production Ready  
