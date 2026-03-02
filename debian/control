@@ -7,20 +7,35 @@ Build-Depends: debhelper (>= 11),
                rustc (>= 1.70),
 Standards-Version: 4.5.0
 Homepage: https://github.com/maw629/rust-add-apt-repository
+Vcs-Git: https://github.com/maw629/rust-add-apt-repository.git
+Vcs-Browser: https://github.com/maw629/rust-add-apt-repository
 
 Package: rust-add-apt-repository
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends},
          apt (>= 1.0),
          gnupg,
-Description: Rust implementation of add-apt-repository
- This package provides a Rust-based implementation of the add-apt-repository
- command, offering the same functionality as the Python version from the
- software-properties-common package.
+Recommends: ca-certificates,
+Suggests: software-properties-common,
+Description: Rust implementation of add-apt-repository command
+ rust-add-apt-repository is a command-line tool for managing APT repositories
+ in Debian and Ubuntu systems. It provides a modern, fast, and safe alternative
+ to the Python add-apt-repository command from software-properties-common.
  .
- It can be installed alongside the original command and provides:
-  - PPA repository management
-  - Cloud Archive support
-  - GPG key handling
-  - Authentication for private repositories
-  - Sources list management
+ Key features:
+  - PPA repository management with Launchpad integration
+  - Ubuntu Cloud Archive support for OpenStack releases
+  - GPG key management and verification
+  - Authentication for private PPAs
+  - Global operations (components, pockets, source code management)
+  - DEB822 format support for modern .sources files
+  - Advanced features (debug mode, validation, proper exit codes)
+  - Dry-run mode for safe testing
+  - Comprehensive documentation and examples
+ .
+ This package can be installed alongside the original Python version. The
+ command is named rust-add-apt-repository to avoid conflicts.
+ .
+ Behavioral compatibility with the Python version ensures drop-in replacement
+ capability for most use cases while offering improved performance and
+ memory safety through Rust.

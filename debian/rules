@@ -10,9 +10,19 @@ override_dh_auto_build:
 	cargo build --release
 
 override_dh_auto_test:
-	# Tests will be added in later phases
-	@echo "Skipping tests for now"
+	cargo test --release
 
 override_dh_auto_install:
+	# Install binary
 	install -D -m 755 target/release/rust-add-apt-repository \
 		debian/rust-add-apt-repository/usr/bin/rust-add-apt-repository
+	
+	# Install man page
+	install -D -m 644 man/rust-add-apt-repository.1 \
+		debian/rust-add-apt-repository/usr/share/man/man1/rust-add-apt-repository.1
+	
+	# Install documentation
+	install -D -m 644 EXAMPLES.md \
+		debian/rust-add-apt-repository/usr/share/doc/rust-add-apt-repository/EXAMPLES.md
+	install -D -m 644 README.md \
+		debian/rust-add-apt-repository/usr/share/doc/rust-add-apt-repository/README.md
