@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod cli;
 pub mod config;
 pub mod error;
@@ -46,7 +47,7 @@ fn add_repository(repo_spec: &str, args: &Cli) -> Result<()> {
     // Parse the repository specification
     let mut repo = if let Some(ppa_spec) = &args.repo_spec.ppa {
         // PPA shortcut
-        ppa::create_ppa_repository(ppa_spec, args.enable_source > 0, &args.component)?
+        ppa::create_ppa_repository(ppa_spec, args.enable_source > 0, &args.component, args.login)?
     } else if let Some(uri) = &args.repo_spec.uri {
         // URI shortcut
         let dist = args.dist.as_deref();
@@ -56,7 +57,7 @@ fn add_repository(repo_spec: &str, args: &Cli) -> Result<()> {
         parse_sourceslist_line(&lines.join(" "))?
     } else if repo_spec.starts_with("ppa:") {
         // Positional PPA argument
-        ppa::create_ppa_repository(repo_spec, args.enable_source > 0, &args.component)?
+        ppa::create_ppa_repository(repo_spec, args.enable_source > 0, &args.component, args.login)?
     } else if repo_spec.starts_with("deb ") || repo_spec.starts_with("deb-src ") {
         // Positional argument with sources.list line
         parse_sourceslist_line(repo_spec)?
@@ -200,7 +201,7 @@ fn remove_repository(repo_spec: &str, dry_run: bool) -> Result<()> {
     // Parse the repository specification
     let repo = if repo_spec.starts_with("ppa:") {
         // PPA removal
-        ppa::create_ppa_repository(repo_spec, false, &[])?
+        ppa::create_ppa_repository(repo_spec, false, &[], false)?
     } else if repo_spec.starts_with("deb ") || repo_spec.starts_with("deb-src ") {
         parse_sourceslist_line(repo_spec)?
     } else if repo_spec.starts_with("http://") 
@@ -286,6 +287,18 @@ fn remove_repository(repo_spec: &str, dry_run: bool) -> Result<()> {
         disabled_count,
         if disabled_count == 1 { "y" } else { "ies" }
     );
+
+    // Handle PPA-specific removal (auth and key files)
+    if repo_spec.starts_with("ppa:") {
+        // Extract owner and ppa_name from repo_spec
+        if let Ok((owner, ppa_name)) = ppa::parse_ppa_shortcut(repo_spec) {
+            // Remove authentication if exists
+            if auth::has_auth(&owner, &ppa_name) {
+                println!("\nRemoving authentication credentials...");
+                ppa::remove_ppa_auth(&owner, &ppa_name)?;
+            }
+        }
+    }
 
     // Check for associated keyring and prompt for removal
     let keyring_file = repo.file.with_extension("gpg");

@@ -1,4 +1,5 @@
 /// PPA (Personal Package Archive) support for Launchpad
+use crate::auth;
 use crate::error::{AppError, Result};
 use crate::repository::Repository;
 use crate::sources::SourceType;
@@ -113,6 +114,7 @@ pub fn create_ppa_repository(
     ppa_spec: &str,
     enable_source: bool,
     components: &[String],
+    use_login: bool,
 ) -> Result<Repository> {
     // Parse PPA shortcut
     let (owner, ppa_name) = parse_ppa_shortcut(ppa_spec)?;
@@ -124,9 +126,20 @@ pub fn create_ppa_repository(
     
     // Check if private
     if ppa_info.private {
-        return Err(AppError::General(
-            "This PPA is private. Use --login flag for authentication (not yet implemented).".to_string()
-        ));
+        if !use_login {
+            return Err(AppError::General(
+                "This PPA is private. Use --login flag to authenticate with Launchpad.".to_string()
+            ));
+        }
+        
+        // Handle private PPA authentication
+        return create_private_ppa_repository(
+            &owner,
+            &ppa_name,
+            &ppa_info,
+            enable_source,
+            components,
+        );
     }
     
     // Construct URI
@@ -191,6 +204,123 @@ pub fn create_ppa_repository(
     }
     
     Ok(repo)
+}
+
+/// Create a private PPA repository with authentication
+fn create_private_ppa_repository(
+    owner: &str,
+    ppa_name: &str,
+    ppa_info: &PPAInfo,
+    enable_source: bool,
+    components: &[String],
+) -> Result<Repository> {
+    println!("\nThis is a private PPA. Authentication required.");
+    println!("Please provide your Launchpad credentials.\n");
+    
+    // For private PPAs, we need to get the subscription URL
+    // The Python implementation uses: me.getArchiveSubscriptionURL(archive)
+    // This requires authenticated Launchpad API access
+    
+    // For now, we'll implement a simpler approach:
+    // Ask user for credentials directly (username + subscription token)
+    // In a full implementation, this would integrate with Launchpad OAuth
+    
+    use std::io::{self, Write};
+    
+    print!("Launchpad username: ");
+    io::stdout().flush()?;
+    let mut username = String::new();
+    io::stdin().read_line(&mut username)?;
+    let username = username.trim().to_string();
+    
+    if username.is_empty() {
+        return Err(AppError::InvalidInput("Username cannot be empty".to_string()));
+    }
+    
+    print!("Subscription token (or password): ");
+    io::stdout().flush()?;
+    let mut token = String::new();
+    io::stdin().read_line(&mut token)?;
+    let token = token.trim().to_string();
+    
+    if token.is_empty() {
+        return Err(AppError::InvalidInput("Token/password cannot be empty".to_string()));
+    }
+    
+    // Store authentication credentials
+    println!("\nStoring authentication credentials...");
+    auth::add_auth(owner, ppa_name, &username, &token)?;
+    
+    // Construct URI (same as public PPA)
+    let uri = construct_ppa_uri(owner, ppa_name);
+    
+    // Get distribution
+    let dist = utils::get_distro_codename()?;
+    
+    // Use provided components or default to "main"
+    let comps = if components.is_empty() {
+        vec!["main".to_string()]
+    } else {
+        components.to_vec()
+    };
+    
+    // Create repository file
+    let filename = format!("{}-ubuntu-{}-{}", owner, ppa_name, dist);
+    let file = PathBuf::from(format!(
+        "{}/{}.list",
+        crate::config::SOURCES_LIST_D_PATH,
+        filename
+    ));
+    
+    let mut repo = Repository::new(file);
+    repo.description = Some(ppa_info.display_name.clone());
+    repo.enable_source = enable_source;
+    
+    // Add binary entry
+    let mut binary_entry = crate::sources::SourceEntry::new(
+        SourceType::Binary,
+        uri.clone(),
+        dist.clone(),
+        comps.clone(),
+    );
+    binary_entry.file = repo.file.clone();
+    repo.entries.push(binary_entry);
+    
+    // Add source entry if requested
+    if enable_source {
+        let mut source_entry = crate::sources::SourceEntry::new(
+            SourceType::Source,
+            uri,
+            dist,
+            comps,
+        );
+        source_entry.file = repo.file.clone();
+        repo.entries.push(source_entry);
+    }
+    
+    // Fetch and set GPG key (if available)
+    if let Some(fingerprint) = &ppa_info.signing_key_fingerprint {
+        println!("Fetching GPG key {} from keyserver...", fingerprint);
+        match fetch_ppa_key(fingerprint) {
+            Ok(key_data) => {
+                repo.key_data = Some(key_data);
+            }
+            Err(e) => {
+                eprintln!("Warning: Failed to fetch GPG key: {}", e);
+                eprintln!("You may need to manually import the key.");
+            }
+        }
+    }
+    
+    println!("\nPrivate PPA authentication configured successfully.");
+    println!("Note: Make sure you have a valid subscription to this PPA.");
+    
+    Ok(repo)
+}
+
+/// Remove authentication for a private PPA
+pub fn remove_ppa_auth(owner: &str, ppa_name: &str) -> Result<()> {
+    auth::remove_auth(owner, ppa_name)
 }
 
 #[cfg(test)]
