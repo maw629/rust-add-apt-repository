@@ -377,8 +377,12 @@ fn remove_repository(repo_spec: &str, dry_run: bool) -> Result<()> {
             .count();
         
         if active_entries == 0 {
-            // Remove file entirely if no active entries remain
+            // Backup before removing file entirely
             if file.exists() {
+                let backup_path = file.with_extension(format!("{}.save", 
+                    file.extension().and_then(|s| s.to_str()).unwrap_or("")
+                ));
+                fs::copy(&file, backup_path)?;
                 fs::remove_file(&file)?;
                 println!("Removed empty sources file: {}", file.display());
             }
