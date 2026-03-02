@@ -3,10 +3,14 @@ name = "rust-add-apt-repository"
 version = "0.1.0"
 edition = "2021"
 authors = ["rust-add-apt-repository contributors"]
-description = "Rust implementation of add-apt-repository command"
+description = "Rust implementation of add-apt-repository - manage APT repositories, PPAs, and Cloud Archives"
 license = "GPL-2.0-or-later"
 repository = "https://github.com/maw629/rust-add-apt-repository"
+homepage = "https://github.com/maw629/rust-add-apt-repository"
+documentation = "https://github.com/maw629/rust-add-apt-repository/blob/main/README.md"
 readme = "README.md"
+keywords = ["apt", "debian", "ubuntu", "ppa", "repository"]
+categories = ["command-line-utilities", "os::linux-apis"]
 
 [[bin]]
 name = "rust-add-apt-repository"

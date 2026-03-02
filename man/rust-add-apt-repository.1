@@ -1,0 +1,251 @@
+.TH RUST-ADD-APT-REPOSITORY 1 "March 2026" "rust-add-apt-repository 0.1.0" "User Commands"
+.SH NAME
+rust-add-apt-repository \- add or remove apt repositories
+.SH SYNOPSIS
+.B rust-add-apt-repository
+[\fIOPTIONS\fR] [\fIREPOSITORY\fR]
+.SH DESCRIPTION
+\fBrust-add-apt-repository\fR is a command-line tool for adding or removing APT repositories in Debian and Ubuntu systems. It provides a convenient way to manage software sources, including PPAs, Cloud Archives, and standard Debian repositories.
+.PP
+This is a Rust implementation of the original \fBadd-apt-repository\fR command, designed to be behaviorally compatible while offering improved performance and safety. It can be installed alongside the original Python version.
+.PP
+The tool automatically handles GPG key management, repository format conversion (one-line and DEB822), and source code repository configuration.
+.SH REPOSITORY FORMATS
+The command accepts several repository formats:
+.TP
+.B PPA (Personal Package Archive)
+.nf
+ppa:user/ppa-name
+ppa:user/ppa-name/release
+.fi
+.IP
+Ubuntu PPAs are automatically configured with appropriate keys and repository information. Use \fB--login\fR for private PPAs.
+.TP
+.B Cloud Archive
+.nf
+cloud-archive:release
+uca:release
+.fi
+.IP
+Ubuntu Cloud Archive repositories (e.g., cloud-archive:bobcat).
+.TP
+.B URI Format
+.nf
+--uri http://example.com/repo --dist noble --component main
+.fi
+.IP
+Direct repository specification using URI, distribution, and components.
+.TP
+.B Sources.list Line
+.nf
+deb http://archive.ubuntu.com/ubuntu noble main universe
+deb-src http://archive.ubuntu.com/ubuntu noble main
+.fi
+.IP
+Full apt sources.list format line. Can be specified with \fB--sourceslist\fR or as a positional argument.
+.SH OPTIONS
+.SS Repository Operations
+.TP
+.BR \-r ", " \-\-remove
+Remove the specified repository instead of adding it. This disables the repository entries and optionally removes associated GPG keys.
+.TP
+.BR \-L ", " \-\-list
+List all currently configured repositories from /etc/apt/sources.list and /etc/apt/sources.list.d/. No repository argument is needed.
+.SS Repository Specification
+.TP
+.BR \-P ", " \-\-ppa " " \fIPPA\fR
+Specify a PPA to add in the format ppa:user/ppa-name.
+.TP
+.BR \-C ", " \-\-cloud " " \fICLOUD\fR
+Specify a Cloud Archive to add (e.g., cloud-archive:bobcat or uca:bobcat).
+.TP
+.BR \-U ", " \-\-uri " " \fIURI\fR
+Specify the repository URI directly (e.g., http://archive.ubuntu.com/ubuntu).
+.TP
+.BR \-S ", " \-\-sourceslist " " \fILINE\fR
+Specify a full sources.list line to add.
+.TP
+.BR \-\-dist " " \fIDIST\fR
+Distribution codename (e.g., noble, jammy). Defaults to current system distribution.
+.TP
+.BR \-c ", " \-\-component " " \fICOMPONENT\fR
+Repository component (e.g., main, universe, restricted). Can be specified multiple times. When used without a repository specification, adds/removes the component globally across all repositories.
+.TP
+.BR \-p ", " \-\-pocket " " \fIPOCKET\fR
+Add or remove a pocket (e.g., updates, security, backports) globally for all repositories. When used without a repository specification, operates globally.
+.SS Source Code Repositories
+.TP
+.BR \-s ", " \-\-enable\-source
+Enable source code (deb-src) repositories. Can be used with a repository specification or globally. Use twice (\fB-ss\fR) to add missing deb-src lines when operating globally.
+.SS Behavior Control
+.TP
+.BR \-y ", " \-\-yes
+Assume yes to all prompts. Non-interactive mode.
+.TP
+.BR \-n ", " \-\-no\-update
+Do not run apt-get update after adding or removing a repository.
+.TP
+.BR \-l ", " \-\-login
+Login to Launchpad for accessing private PPAs. Requires authentication credentials.
+.TP
+.BR \-\-dry\-run
+Show what would be done without making any actual changes. Useful for testing commands.
+.SS Debugging and Information
+.TP
+.BR \-d ", " \-\-debug
+Enable debug mode. Prints detailed information about operations to stderr.
+.TP
+.BR \-h ", " \-\-help
+Print help information and exit.
+.TP
+.BR \-V ", " \-\-version
+Print version information and exit.
+.SH EXAMPLES
+.SS Adding Repositories
+.TP
+Add a PPA:
+.nf
+$ sudo rust-add-apt-repository ppa:graphics-drivers/ppa
+.fi
+.TP
+Add a Cloud Archive:
+.nf
+$ sudo rust-add-apt-repository cloud-archive:bobcat
+.fi
+.TP
+Add a repository using URI:
+.nf
+$ sudo rust-add-apt-repository --uri http://ppa.launchpad.net/test/ppa/ubuntu \\
+                                --dist noble --component main
+.fi
+.TP
+Add a sources.list line:
+.nf
+$ sudo rust-add-apt-repository \\
+  "deb http://archive.ubuntu.com/ubuntu noble multiverse"
+.fi
+.TP
+Add repository with source code:
+.nf
+$ sudo rust-add-apt-repository -s ppa:graphics-drivers/ppa
+.fi
+.SS Removing Repositories
+.TP
+Remove a PPA:
+.nf
+$ sudo rust-add-apt-repository --remove ppa:graphics-drivers/ppa
+.fi
+.TP
+Remove a repository by URI:
+.nf
+$ sudo rust-add-apt-repository --remove --uri http://example.com/repo \\
+                                --dist noble --component main
+.fi
+.SS Global Operations
+.TP
+Enable universe component globally:
+.nf
+$ sudo rust-add-apt-repository --component universe
+.fi
+.TP
+Remove multiverse component globally:
+.nf
+$ sudo rust-add-apt-repository --remove --component multiverse
+.fi
+.TP
+Enable updates pocket globally:
+.nf
+$ sudo rust-add-apt-repository --pocket updates
+.fi
+.TP
+Enable source repositories globally:
+.nf
+$ sudo rust-add-apt-repository -s
+.fi
+.TP
+Enable all missing deb-src lines:
+.nf
+$ sudo rust-add-apt-repository -ss
+.fi
+.SS Listing and Inspection
+.TP
+List all repositories:
+.nf
+$ rust-add-apt-repository --list
+.fi
+.TP
+Dry-run to see what would be added:
+.nf
+$ sudo rust-add-apt-repository --dry-run ppa:test/ppa
+.fi
+.TP
+Debug mode for troubleshooting:
+.nf
+$ sudo rust-add-apt-repository --debug --dry-run ppa:test/ppa
+.fi
+.SS Private PPAs
+.TP
+Add private PPA with authentication:
+.nf
+$ sudo rust-add-apt-repository --login ppa:user/private-ppa
+.fi
+.SH FILES
+.TP
+.I /etc/apt/sources.list
+Main APT sources file. Modified for global component operations.
+.TP
+.I /etc/apt/sources.list.d/*.list
+Additional repository files in one-line format.
+.TP
+.I /etc/apt/sources.list.d/*.sources
+Additional repository files in DEB822 format.
+.TP
+.I /etc/apt/trusted.gpg.d/*.gpg
+GPG keyring files for repository signing keys.
+.TP
+.I /etc/apt/auth.conf.d/*.conf
+Authentication configuration for private repositories.
+.TP
+.I /usr/share/keyrings/
+System keyring directory for distribution-provided keys.
+.SH EXIT STATUS
+.TP
+.B 0
+Success. The operation completed successfully.
+.TP
+.B 1
+General error. This includes permission errors, I/O errors, or network failures.
+.TP
+.B 2
+Invalid input. The provided repository specification or command-line arguments are invalid.
+.SH NOTES
+.SS Permissions
+This command must be run with root privileges (using \fBsudo\fR) to modify system APT configuration, except for \fB--list\fR and \fB--help\fR operations.
+.SS Component Validation
+The tool validates components against a known list of Ubuntu and Debian components (main, universe, restricted, multiverse, contrib, non-free, non-free-firmware). Unknown components generate warnings but do not prevent the operation, allowing for third-party repositories.
+.SS DEB822 Format
+The tool supports both traditional one-line format and modern DEB822 format. When reading existing repositories, both formats are recognized. New repositories are added in one-line format by default unless \fB--use-deb822\fR is specified (if available in your version).
+.SS Global Operations
+When \fB--component\fR, \fB--pocket\fR, or \fB--enable-source\fR is used without specifying a repository, the operation applies globally to all existing repositories.
+.IP \(bu 2
+Component operations modify only /etc/apt/sources.list
+.IP \(bu 2
+Pocket operations add new entries with the pocket suffix
+.IP \(bu 2
+Source operations work across all repository files
+.SS Repository File Naming
+When adding repositories, the tool creates files in /etc/apt/sources.list.d/ with names derived from the repository URI and distribution, replacing special characters with underscores.
+.SH COMPATIBILITY
+This Rust implementation maintains behavioral compatibility with the original Python \fBadd-apt-repository\fR command. It can be installed alongside the original as \fBrust-add-apt-repository\fR.
+.PP
+The package name is \fBrust-add-apt-repository\fR to avoid conflicts with the original \fBsoftware-properties-common\fR package.
+.SH BUGS
+Report bugs at: <URL for bug reporting>
+.SH SEE ALSO
+.BR apt (8),
+.BR apt-get (8),
+.BR sources.list (5),
+.BR apt-key (8),
+.BR apt.conf (5)
+.SH AUTHOR
+Written as a Rust reimplementation of the original add-apt-repository tool from software-properties-common.
