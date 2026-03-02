@@ -18,6 +18,10 @@ pub struct Repository {
     pub key_data: Option<String>,
     /// GPG key URL
     pub key_url: Option<String>,
+    /// GPG keyring file path (for Signed-By in DEB822)
+    pub keyring_path: Option<PathBuf>,
+    /// Use DEB822 format instead of one-line format
+    pub use_deb822: bool,
 }
 
 impl Repository {
@@ -30,6 +34,8 @@ impl Repository {
             enable_source: false,
             key_data: None,
             key_url: None,
+            keyring_path: None,
+            use_deb822: false,
         }
     }
 
@@ -68,6 +74,35 @@ impl Repository {
         if self.enable_source {
             self.add_source_entry(uri, dist, components);
         }
+    }
+
+    /// Save repository in DEB822 format
+    pub fn save_as_deb822(&self) -> Result<()> {
+        use crate::deb822::{Deb822Stanza, write_deb822_file};
+        use std::collections::HashMap;
+
+        // Group entries by (uri, dist, components) to create stanzas
+        let mut stanza_map: HashMap<(String, String, Vec<String>), Vec<SourceType>> = HashMap::new();
+
+        for entry in &self.entries {
+            let key = (entry.uri.clone(), entry.dist.clone(), entry.components.clone());
+            stanza_map.entry(key).or_insert_with(Vec::new).push(entry.entry_type);
+        }
+
+        // Create stanzas
+        let mut stanzas = Vec::new();
+        for ((uri, dist, components), types) in stanza_map {
+            let mut stanza = Deb822Stanza::new(self.file.clone());
+            stanza.types = types;
+            stanza.uris = vec![uri];
+            stanza.suites = vec![dist];
+            stanza.components = components;
+            stanza.signed_by = self.keyring_path.as_ref().map(|p| p.display().to_string());
+            stanzas.push(stanza);
+        }
+
+        write_deb822_file(&self.file, &stanzas)?;
+        Ok(())
     }
 }
 

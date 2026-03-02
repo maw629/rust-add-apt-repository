@@ -41,21 +41,60 @@ impl SourcesList {
             self.load_file(main_file)?;
         }
 
-        // Load sources.list.d/*.list files
+        // Load sources.list.d/*.list files (one-line format)
         let list_files = utils::list_sources_list_d_files()?;
         for file in list_files {
             self.load_file(&file)?;
         }
 
+        // Load sources.list.d/*.sources files (DEB822 format)
+        let sources_files = utils::list_sources_list_d_deb822_files()?;
+        for file in sources_files {
+            self.load_deb822_file(&file)?;
+        }
+
         Ok(())
     }
 
-    /// Load sources from a single file
+    /// Load sources from a single file (one-line format)
     pub fn load_file(&mut self, path: &Path) -> Result<()> {
         let content = utils::read_file_to_string(path)?;
         
         for line in content.lines() {
             if let Some(entry) = SourceEntry::from_line(line, path.to_path_buf()) {
+                self.entries.push(entry);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Load sources from a DEB822 format file
+    pub fn load_deb822_file(&mut self, path: &Path) -> Result<()> {
+        let content = utils::read_file_to_string(path)?;
+        let stanzas = crate::deb822::parse_deb822_file(&content, path.to_path_buf())?;
+
+        // Expand each stanza into individual SourceEntry objects
+        for stanza in stanzas {
+            if !stanza.enabled {
+                continue; // Skip disabled stanzas
+            }
+
+            let oneline_entries = crate::deb822::expand_to_oneline(&stanza);
+            for (source_type, uri, suite, components) in oneline_entries {
+                let mut entry = SourceEntry::new(
+                    source_type,
+                    uri,
+                    suite,
+                    components,
+                );
+                entry.file = path.to_path_buf();
+                entry.line = format!("{} {} {} {}", 
+                    entry.entry_type.as_str(),
+                    entry.uri,
+                    entry.dist,
+                    entry.components.join(" ")
+                );
                 self.entries.push(entry);
             }
         }

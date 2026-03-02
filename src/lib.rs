@@ -2,6 +2,7 @@ pub mod auth;
 pub mod cli;
 pub mod cloudarchive;
 pub mod config;
+pub mod deb822;
 pub mod error;
 pub mod global;
 pub mod gpg;
