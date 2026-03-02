@@ -16,7 +16,7 @@ impl KeyFingerprint {
     /// Create a new key fingerprint
     pub fn new(fingerprint: String) -> Self {
         Self {
-            fingerprint: fingerprint.to_uppercase().replace(" ", ""),
+            fingerprint: fingerprint.to_uppercase().replace(' ', ""),
         }
     }
 

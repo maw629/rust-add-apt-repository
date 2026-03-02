@@ -262,7 +262,7 @@ fn add_repository(repo_spec: &str, args: &Cli) -> Result<()> {
             println!("\nImporting GPG key...");
             
             let keyring_filename = gpg::generate_keyring_filename(
-                &repo.file.file_stem()
+                repo.file.file_stem()
                     .and_then(|s| s.to_str())
                     .unwrap_or("repository")
             );

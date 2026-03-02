@@ -74,7 +74,7 @@ pub fn add_auth(owner: &str, ppa_name: &str, login: &str, password: &str) -> Res
 
     // Generate filename based on PPA
     let filename = format!("{}-ubuntu-{}.conf", owner, ppa_name);
-    let auth_file = auth_dir.join(&filename);
+    let auth_file = auth_dir.join(filename);
 
     // Construct machine hostname
     // Format: ppa.launchpadcontent.net/owner/ppa-name
@@ -100,7 +100,7 @@ pub fn add_auth(owner: &str, ppa_name: &str, login: &str, password: &str) -> Res
 pub fn remove_auth(owner: &str, ppa_name: &str) -> Result<()> {
     let auth_dir = Path::new(AUTH_CONF_D_PATH);
     let filename = format!("{}-ubuntu-{}.conf", owner, ppa_name);
-    let auth_file = auth_dir.join(&filename);
+    let auth_file = auth_dir.join(filename);
 
     if auth_file.exists() {
         fs::remove_file(&auth_file)?;
@@ -114,7 +114,7 @@ pub fn remove_auth(owner: &str, ppa_name: &str) -> Result<()> {
 pub fn has_auth(owner: &str, ppa_name: &str) -> bool {
     let auth_dir = Path::new(AUTH_CONF_D_PATH);
     let filename = format!("{}-ubuntu-{}.conf", owner, ppa_name);
-    let auth_file = auth_dir.join(&filename);
+    let auth_file = auth_dir.join(filename);
     auth_file.exists()
 }
 
@@ -122,7 +122,7 @@ pub fn has_auth(owner: &str, ppa_name: &str) -> bool {
 pub fn read_auth(owner: &str, ppa_name: &str) -> Result<Option<AuthEntry>> {
     let auth_dir = Path::new(AUTH_CONF_D_PATH);
     let filename = format!("{}-ubuntu-{}.conf", owner, ppa_name);
-    let auth_file = auth_dir.join(&filename);
+    let auth_file = auth_dir.join(filename);
 
     if !auth_file.exists() {
         return Ok(None);

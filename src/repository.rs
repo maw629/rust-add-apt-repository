@@ -86,7 +86,7 @@ impl Repository {
 
         for entry in &self.entries {
             let key = (entry.uri.clone(), entry.dist.clone(), entry.components.clone());
-            stanza_map.entry(key).or_insert_with(Vec::new).push(entry.entry_type);
+            stanza_map.entry(key).or_default().push(entry.entry_type);
         }
 
         // Create stanzas

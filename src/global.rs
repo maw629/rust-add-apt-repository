@@ -422,7 +422,7 @@ mod tests {
     fn test_pocket_suffix_parsing() {
         let dist = "noble-updates";
         assert!(dist.ends_with("-updates"));
-        assert!(dist.contains("-"));
+        assert!(dist.contains('-'));
         
         let pocket = "security";
         let new_dist = format!("noble-{}", pocket);

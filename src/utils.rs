@@ -113,7 +113,7 @@ pub fn list_sources_list_d_deb822_files() -> Result<Vec<PathBuf>> {
 pub fn get_distro_codename() -> Result<String> {
     // Try lsb_release first
     if let Ok(output) = std::process::Command::new("lsb_release")
-        .args(&["-cs"])
+        .args(["-cs"])
         .output()
     {
         if output.status.success() {

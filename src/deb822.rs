@@ -353,7 +353,7 @@ Suites: stable
 Components: main
 ";
         let stanzas = parse_deb822_file(content, PathBuf::from("/test")).unwrap();
-        assert_eq!(stanzas[0].enabled, false);
+        assert!(!stanzas[0].enabled);
     }
 
     #[test]

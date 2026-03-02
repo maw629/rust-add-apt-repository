@@ -305,7 +305,7 @@ impl SourcesList {
         for entry in &self.entries {
             files_content
                 .entry(entry.file.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(entry);
         }
 
@@ -368,7 +368,7 @@ impl SourcesList {
             );
             stanza_map
                 .entry(key)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(entry.entry_type);
         }
 

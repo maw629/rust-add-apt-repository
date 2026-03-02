@@ -130,7 +130,7 @@ fn construct_suite(release: &str, pocket: Option<&str>) -> Result<String> {
 pub fn check_cloud_keyring_installed() -> bool {
     // Check using dpkg-query
     let output = std::process::Command::new("dpkg-query")
-        .args(&["-W", "-f=${Status}", CLOUD_KEYRING_PACKAGE])
+        .args(["-W", "-f=${Status}", CLOUD_KEYRING_PACKAGE])
         .output();
     
     if let Ok(output) = output {
@@ -146,7 +146,7 @@ pub fn install_cloud_keyring() -> Result<()> {
     println!("Installing {} package for GPG keys...", CLOUD_KEYRING_PACKAGE);
     
     let status = std::process::Command::new("apt-get")
-        .args(&["install", "-y", CLOUD_KEYRING_PACKAGE])
+        .args(["install", "-y", CLOUD_KEYRING_PACKAGE])
         .status()?;
     
     if !status.success() {

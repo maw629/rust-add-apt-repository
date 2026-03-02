@@ -1,9 +1,9 @@
 // Integration tests for rust-add-apt-repository
 // These tests verify end-to-end workflows using the actual CLI
 
-use std::fs;
+
 use std::process::Command;
-use tempfile::TempDir;
+
 
 /// Helper function to run the command with arguments
 fn run_command(args: &[&str]) -> (i32, String, String) {
@@ -44,7 +44,7 @@ fn test_version_flag() {
 #[test]
 fn test_dry_run_mode() {
     // This test verifies that --dry-run flag prevents actual modifications
-    let (exit_code, stdout, _stderr) = run_command(&[
+    let (exit_code, stdout, stderr) = run_command(&[
         "--dry-run",
         "--uri", "http://example.com/repo",
         "--dist", "noble",
@@ -56,8 +56,8 @@ fn test_dry_run_mode() {
     assert!(exit_code == 0 || exit_code == 1, "Dry-run should complete");
     
     // If output contains anything, it should indicate dry-run mode
-    if !stdout.is_empty() || !_stderr.is_empty() {
-        let combined = format!("{}{}", stdout, _stderr);
+    if !stdout.is_empty() || !stderr.is_empty() {
+        let combined = format!("{stdout}{stderr}");
         // Implementation may or may not print dry-run messages
         // Just ensure it doesn't crash
         assert!(!combined.is_empty());
@@ -107,16 +107,14 @@ fn test_invalid_input_exit_code() {
     assert!(exit_code != 0, "Invalid input should fail");
     
     // Error message should be present
-    if !stderr.is_empty() {
-        assert!(stderr.len() > 0, "Should have error message");
-    }
+    assert!(!stderr.is_empty(), "Should have error message");
 }
 
 /// Test PPA format validation
 #[test]
 fn test_ppa_format_validation() {
     // Invalid PPA format should be rejected
-    let (exit_code, _stdout, stderr) = run_command(&[
+    let (exit_code, _stdout, _stderr) = run_command(&[
         "--dry-run",
         "--ppa", "invalid-ppa-format",
     ]);
@@ -124,10 +122,7 @@ fn test_ppa_format_validation() {
     // Should fail with invalid input
     assert!(exit_code != 0, "Invalid PPA format should fail");
     
-    // Should mention PPA format
-    if stderr.contains("PPA") || stderr.contains("ppa:") {
-        assert!(true, "Error should mention PPA format");
-    }
+    // Error message should mention PPA format (but not asserting on it to avoid brittle tests)
 }
 
 /// Test URI format validation
@@ -141,8 +136,11 @@ fn test_uri_requires_components() {
     ]);
     
     // Without components, should fail or prompt (in non-interactive mode, should fail)
-    // Exit code should not be 0 unless it defaults components somehow
-    assert!(exit_code == 0 || exit_code != 0, "Should handle missing components");
+    // In dry-run mode without components, the command should complete
+    // (behavior may vary - some implementations allow it, others don't)
+    // For now, just verify command completes without panicking
+    #[allow(clippy::overly_complex_bool_expr)]
+    let _ = exit_code; // Just verify we got an exit code
 }
 
 /// Test cloud archive format
@@ -302,7 +300,7 @@ fn test_multiple_components() {
 /// Test invalid suite format (with spaces)
 #[test]
 fn test_invalid_suite_with_spaces() {
-    let (exit_code, _stdout, stderr) = run_command(&[
+    let (exit_code, _stdout, _stderr) = run_command(&[
         "--dry-run",
         "--sourceslist", "deb http://example.com/repo noble main extra",
     ]);
@@ -312,10 +310,7 @@ fn test_invalid_suite_with_spaces() {
     // Suite validation happens during parsing, exit code 0 or 1 expected
     assert!(exit_code == 0 || exit_code == 1, "Should process the line");
     
-    // May show warning about components
-    if stderr.contains("Warning") {
-        assert!(true, "May warn about components");
-    }
+    // Warning about components is optional (implementation detail)
 }
 
 /// Test conflicting options
