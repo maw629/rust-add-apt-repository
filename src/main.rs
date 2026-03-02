@@ -13,7 +13,8 @@ fn main() {
     // Run the application
     if let Err(e) = run() {
         eprintln!("{}", e);
-        process::exit(1);
+        let exit_code = e.exit_code();
+        process::exit(exit_code);
     }
 }
 

@@ -14,6 +14,18 @@ pub enum AppError {
     General(String),
 }
 
+impl AppError {
+    /// Get the exit code for this error
+    pub fn exit_code(&self) -> i32 {
+        match self {
+            AppError::Io(_) => 1,
+            AppError::Permission(_) => 1,
+            AppError::InvalidInput(_) => 2,
+            AppError::General(_) => 1,
+        }
+    }
+}
+
 pub type Result<T> = std::result::Result<T, AppError>;
 
 impl fmt::Display for AppError {

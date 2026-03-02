@@ -3,6 +3,7 @@ pub mod cli;
 pub mod cloudarchive;
 pub mod config;
 pub mod deb822;
+pub mod debug;
 pub mod error;
 pub mod global;
 pub mod gpg;
@@ -11,6 +12,7 @@ pub mod repository;
 pub mod sources;
 pub mod sourceslist;
 pub mod utils;
+pub mod validation;
 
 pub use error::{AppError, Result};
 
@@ -24,8 +26,16 @@ use std::path::PathBuf;
 pub fn run() -> Result<()> {
     let args = Cli::parse_args();
     
+    // Enable debug mode if requested
+    if args.debug {
+        debug::enable_debug();
+        debug_log!("Debug mode enabled");
+        debug::log_args(&args);
+    }
+    
     // Handle list mode (doesn't require root)
     if args.repo_spec.list {
+        debug_log!("Listing repositories");
         return global::list_repositories();
     }
     
@@ -34,6 +44,7 @@ pub fn run() -> Result<()> {
     // Handle dry-run mode
     if args.dry_run {
         println!("Running in dry-run mode. No changes will be made.");
+        debug_log!("Dry-run mode active");
     }
     
     // Check for global operations (no repository specified)
@@ -45,15 +56,19 @@ pub fn run() -> Result<()> {
     
     if !has_repo_spec {
         // Global operations (no repository specified)
+        debug_log!("Processing global operations");
         return handle_global_operations(&args);
     }
     
     // Determine what repository to add/remove
     let repo_spec = args.get_repo_spec()?;
+    debug_log!("Repository specification: {}", repo_spec);
     
     if args.remove {
+        debug_log!("Removing repository");
         remove_repository(&repo_spec, args.dry_run)
     } else {
+        debug_log!("Adding repository");
         add_repository(&repo_spec, &args)
     }
 }
@@ -166,6 +181,24 @@ fn add_repository(repo_spec: &str, args: &Cli) -> Result<()> {
         for entry in binary_entries {
             repo.add_source_entry(entry.uri.clone(), entry.dist.clone(), entry.components.clone());
         }
+    };
+
+    // Log repository information in debug mode
+    debug::log_repository_info(&repo);
+
+    // Validate components if any
+    if !repo.entries.is_empty() {
+        let components = &repo.entries[0].components;
+        validation::validate_components(components)?;
+        
+        // Validate suite
+        let suite = &repo.entries[0].dist;
+        validation::validate_suite(suite)?;
+        
+        // Identify repository type
+        let uri = &repo.entries[0].uri;
+        let repo_type = validation::get_repo_type(uri);
+        debug_log!("Repository type: {}", repo_type);
     }
 
     // Display repository information
