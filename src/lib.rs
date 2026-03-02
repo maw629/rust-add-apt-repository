@@ -2,6 +2,7 @@ pub mod cli;
 pub mod config;
 pub mod error;
 pub mod gpg;
+pub mod ppa;
 pub mod repository;
 pub mod sources;
 pub mod sourceslist;
@@ -43,13 +44,19 @@ pub fn run() -> Result<()> {
 
 fn add_repository(repo_spec: &str, args: &Cli) -> Result<()> {
     // Parse the repository specification
-    let mut repo = if let Some(uri) = &args.repo_spec.uri {
+    let mut repo = if let Some(ppa_spec) = &args.repo_spec.ppa {
+        // PPA shortcut
+        ppa::create_ppa_repository(ppa_spec, args.enable_source > 0, &args.component)?
+    } else if let Some(uri) = &args.repo_spec.uri {
         // URI shortcut
         let dist = args.dist.as_deref();
         parse_uri_shortcut(uri, dist, &args.component, args.enable_source > 0)?
     } else if let Some(lines) = &args.repo_spec.sourceslist {
         // Sources.list line format
         parse_sourceslist_line(&lines.join(" "))?
+    } else if repo_spec.starts_with("ppa:") {
+        // Positional PPA argument
+        ppa::create_ppa_repository(repo_spec, args.enable_source > 0, &args.component)?
     } else if repo_spec.starts_with("deb ") || repo_spec.starts_with("deb-src ") {
         // Positional argument with sources.list line
         parse_sourceslist_line(repo_spec)?
@@ -191,7 +198,10 @@ fn add_repository(repo_spec: &str, args: &Cli) -> Result<()> {
 
 fn remove_repository(repo_spec: &str, dry_run: bool) -> Result<()> {
     // Parse the repository specification
-    let repo = if repo_spec.starts_with("deb ") || repo_spec.starts_with("deb-src ") {
+    let repo = if repo_spec.starts_with("ppa:") {
+        // PPA removal
+        ppa::create_ppa_repository(repo_spec, false, &[])?
+    } else if repo_spec.starts_with("deb ") || repo_spec.starts_with("deb-src ") {
         parse_sourceslist_line(repo_spec)?
     } else if repo_spec.starts_with("http://") 
            || repo_spec.starts_with("https://") 
@@ -202,7 +212,7 @@ fn remove_repository(repo_spec: &str, dry_run: bool) -> Result<()> {
         ));
     } else {
         return Err(AppError::General(
-            "Repository removal for PPA and Cloud Archive not yet implemented".to_string()
+            "Repository removal for Cloud Archive not yet implemented".to_string()
         ));
     };
 
