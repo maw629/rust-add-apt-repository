@@ -1,6 +1,7 @@
 pub mod cli;
 pub mod config;
 pub mod error;
+pub mod gpg;
 pub mod repository;
 pub mod sources;
 pub mod sourceslist;
@@ -11,6 +12,8 @@ pub use error::{AppError, Result};
 use crate::cli::Cli;
 use crate::repository::{parse_sourceslist_line, parse_uri_shortcut};
 use crate::sourceslist::SourcesList;
+use std::fs;
+use std::path::PathBuf;
 
 /// Main entry point for the library
 pub fn run() -> Result<()> {
@@ -138,6 +141,34 @@ fn add_repository(repo_spec: &str, args: &Cli) -> Result<()> {
         sources_list.save()?;
         println!("\nRepository added successfully.");
         
+        // Handle GPG key if provided
+        if repo.key_data.is_some() || repo.key_url.is_some() {
+            println!("\nImporting GPG key...");
+            
+            let keyring_filename = gpg::generate_keyring_filename(
+                &repo.file.file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("repository")
+            );
+            let keyring_path = gpg::get_keyring_path(&keyring_filename);
+            
+            let fingerprints = if let Some(key_data) = &repo.key_data {
+                gpg::import_key(key_data, &keyring_path)?
+            } else if let Some(key_url) = &repo.key_url {
+                gpg::import_key_from_url(key_url, &keyring_path)?
+            } else {
+                Vec::new()
+            };
+            
+            if !fingerprints.is_empty() {
+                println!("Imported key fingerprints:");
+                for fp in &fingerprints {
+                    println!("  {}", fp.fingerprint);
+                }
+                println!("Keyring saved to: {}", keyring_path.display());
+            }
+        }
+        
         // Run apt-get update unless --no-update specified
         if !args.no_update {
             println!("\nUpdating package lists...");
@@ -158,9 +189,115 @@ fn add_repository(repo_spec: &str, args: &Cli) -> Result<()> {
     Ok(())
 }
 
-fn remove_repository(_repo_spec: &str, _dry_run: bool) -> Result<()> {
-    // Repository removal will be implemented in later phase
-    Err(AppError::General("Repository removal not yet implemented".to_string()))
+fn remove_repository(repo_spec: &str, dry_run: bool) -> Result<()> {
+    // Parse the repository specification
+    let repo = if repo_spec.starts_with("deb ") || repo_spec.starts_with("deb-src ") {
+        parse_sourceslist_line(repo_spec)?
+    } else if repo_spec.starts_with("http://") 
+           || repo_spec.starts_with("https://") 
+           || repo_spec.starts_with("ftp://") 
+           || repo_spec.starts_with("file://") {
+        return Err(AppError::General(
+            "For URI removal, please provide the full sources.list line (deb ...)".to_string()
+        ));
+    } else {
+        return Err(AppError::General(
+            "Repository removal for PPA and Cloud Archive not yet implemented".to_string()
+        ));
+    };
+
+    println!("Repository to remove:");
+    for entry in &repo.entries {
+        println!("  {}", entry.to_line());
+    }
+    
+    if dry_run {
+        println!("\n[DRY RUN] Would remove/disable repository (no changes made)");
+        return Ok(());
+    }
+
+    // Load existing sources
+    let mut sources_list = SourcesList::new()?;
+    
+    // Find matching entries
+    let mut found_entries = Vec::new();
+    for (idx, entry) in sources_list.entries.iter().enumerate() {
+        for repo_entry in &repo.entries {
+            if entry.entry_type == repo_entry.entry_type
+                && entry.uri.trim_end_matches('/') == repo_entry.uri.trim_end_matches('/')
+                && entry.dist == repo_entry.dist
+            {
+                found_entries.push((idx, entry.file.clone()));
+            }
+        }
+    }
+
+    if found_entries.is_empty() {
+        println!("\nRepository not found in sources.");
+        return Ok(());
+    }
+
+    // Backup before making changes
+    let backup_ext = sources_list.backup()?;
+    println!("\nBacked up sources (extension: {})", backup_ext);
+
+    // Disable (comment out) the entries
+    let mut disabled_count = 0;
+    for (idx, _) in &found_entries {
+        sources_list.entries[*idx].set_enabled(false);
+        sources_list.entries[*idx].line = sources_list.entries[*idx].to_line();
+        disabled_count += 1;
+    }
+
+    // Check if any files now contain only disabled/invalid entries
+    let files_to_check: std::collections::HashSet<PathBuf> = 
+        found_entries.iter().map(|(_, f)| f.clone()).collect();
+
+    for file in files_to_check {
+        let active_entries = sources_list.entries.iter()
+            .filter(|e| e.file == file && !e.disabled)
+            .count();
+        
+        if active_entries == 0 {
+            // Remove file entirely if no active entries remain
+            if file.exists() {
+                fs::remove_file(&file)?;
+                println!("Removed empty sources file: {}", file.display());
+            }
+            // Remove entries from sources_list
+            sources_list.entries.retain(|e| e.file != file);
+        }
+    }
+
+    // Save changes
+    sources_list.save()?;
+    
+    println!("\nDisabled {} repository entr{}", 
+        disabled_count,
+        if disabled_count == 1 { "y" } else { "ies" }
+    );
+
+    // Check for associated keyring and prompt for removal
+    let keyring_file = repo.file.with_extension("gpg");
+    let keyring_path = PathBuf::from(crate::config::TRUSTED_GPG_D_PATH)
+        .join(keyring_file.file_name().unwrap_or_default());
+    
+    if keyring_path.exists() {
+        println!("\nFound associated keyring: {}", keyring_path.display());
+        print!("Remove this keyring file? [y/N] ");
+        use std::io::{self, Write};
+        io::stdout().flush()?;
+        
+        let mut response = String::new();
+        io::stdin().read_line(&mut response)?;
+        
+        if response.trim().to_lowercase() == "y" {
+            gpg::remove_keyring(&keyring_path)?;
+            println!("Keyring removed.");
+        }
+    }
+
+    Ok(())
 }
 
 fn list_repositories() -> Result<()> {

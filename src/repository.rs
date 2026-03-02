@@ -14,6 +14,10 @@ pub struct Repository {
     pub file: PathBuf,
     /// Whether to enable source (deb-src) entries
     pub enable_source: bool,
+    /// GPG key data (ASCII-armored)
+    pub key_data: Option<String>,
+    /// GPG key URL
+    pub key_url: Option<String>,
 }
 
 impl Repository {
@@ -24,6 +28,8 @@ impl Repository {
             description: None,
             file,
             enable_source: false,
+            key_data: None,
+            key_url: None,
         }
     }
 
