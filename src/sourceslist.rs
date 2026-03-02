@@ -217,9 +217,9 @@ impl SourcesList {
         count
     }
 
-    /// Backup all source files with a timestamp
+    /// Backup all source files with .save extension (matches Python version behavior)
     pub fn backup(&mut self) -> Result<String> {
-        let backup_ext = chrono::Local::now().format(".%y%m%d.%H%M").to_string();
+        let backup_ext = ".save".to_string();
         self.backup_with_ext(&backup_ext)?;
         self.backup_ext = Some(backup_ext.clone());
         Ok(backup_ext)
