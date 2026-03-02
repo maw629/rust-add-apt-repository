@@ -15,7 +15,7 @@ pub struct Cli {
     pub remove: bool,
 
     /// Allow downloading of the source packages from the repository
-    #[arg(short, long = "enable-source", action = clap::ArgAction::Count)]
+    #[arg(short = 's', long = "enable-source", action = clap::ArgAction::Count)]
     pub enable_source: u8,
 
     /// Components to use with the repository (can be used multiple times)

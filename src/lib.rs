@@ -3,6 +3,7 @@ pub mod cli;
 pub mod cloudarchive;
 pub mod config;
 pub mod error;
+pub mod global;
 pub mod gpg;
 pub mod ppa;
 pub mod repository;
@@ -24,7 +25,7 @@ pub fn run() -> Result<()> {
     
     // Handle list mode (doesn't require root)
     if args.repo_spec.list {
-        return list_repositories();
+        return global::list_repositories();
     }
     
     // For all other operations, we need root (already checked in main.rs)
@@ -32,6 +33,18 @@ pub fn run() -> Result<()> {
     // Handle dry-run mode
     if args.dry_run {
         println!("Running in dry-run mode. No changes will be made.");
+    }
+    
+    // Check for global operations (no repository specified)
+    let has_repo_spec = args.repo_spec.ppa.is_some() 
+        || args.repo_spec.cloud.is_some()
+        || args.repo_spec.uri.is_some()
+        || args.repo_spec.sourceslist.is_some()
+        || !args.repo_spec.line.is_empty();
+    
+    if !has_repo_spec {
+        // Global operations (no repository specified)
+        return handle_global_operations(&args);
     }
     
     // Determine what repository to add/remove
@@ -42,6 +55,64 @@ pub fn run() -> Result<()> {
     } else {
         add_repository(&repo_spec, &args)
     }
+}
+
+/// Handle global operations (component, pocket, source management)
+fn handle_global_operations(args: &Cli) -> Result<()> {
+    let has_operation = !args.component.is_empty() 
+        || args.pocket.is_some() 
+        || args.enable_source > 0;
+    
+    if !has_operation {
+        return Err(AppError::InvalidInput(
+            "No repository or global operation specified. Use -c, -p, -s, or provide a repository.".to_string()
+        ));
+    }
+    
+    // Handle component operations
+    for component in &args.component {
+        if args.remove {
+            global::disable_component(component, args.dry_run)?;
+        } else {
+            global::enable_component(component, args.dry_run)?;
+        }
+    }
+    
+    // Handle pocket operations
+    if let Some(pocket) = &args.pocket {
+        if args.remove {
+            global::disable_pocket(pocket, args.dry_run)?;
+        } else {
+            global::enable_pocket(pocket, args.dry_run)?;
+        }
+    }
+    
+    // Handle source code enable/disable
+    if args.enable_source > 0 {
+        if args.remove {
+            global::disable_source_code(args.dry_run)?;
+        } else {
+            // -s once: enable existing, -s twice: also add missing
+            let add_missing = args.enable_source >= 2;
+            global::enable_source_code(add_missing, args.dry_run)?;
+        }
+    }
+    
+    // Update package cache unless --no-update
+    if !args.no_update && !args.dry_run {
+        println!("Updating package cache...");
+        let status = std::process::Command::new("apt-get")
+            .arg("update")
+            .status();
+        
+        match status {
+            Ok(s) if s.success() => println!("Package lists updated."),
+            Ok(s) => println!("Warning: apt-get update exited with status {}", s),
+            Err(e) => println!("Warning: Failed to run apt-get update: {}", e),
+        }
+    }
+    
+    Ok(())
 }
 
 fn add_repository(repo_spec: &str, args: &Cli) -> Result<()> {
@@ -330,32 +401,5 @@ fn remove_repository(repo_spec: &str, dry_run: bool) -> Result<()> {
         }
     }
 
-    Ok(())
-}
-
-fn list_repositories() -> Result<()> {
-    let sources_list = SourcesList::new()?;
-    
-    if sources_list.is_empty() {
-        println!("No repositories configured.");
-        return Ok(());
-    }
-    
-    println!("Configured repositories:\n");
-    
-    let mut current_file = None;
-    for entry in &sources_list.entries {
-        // Print file header when it changes
-        if current_file.as_ref() != Some(&entry.file) {
-            if current_file.is_some() {
-                println!(); // Blank line between files
-            }
-            println!("{}:", entry.file.display());
-            current_file = Some(entry.file.clone());
-        }
-        
-        println!("  {}", entry.line);
-    }
-    
     Ok(())
 }
