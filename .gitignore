@@ -34,6 +34,9 @@ debian/*.substvars
 debian/rust-add-apt-repository/
 debian/*.debhelper.log
 
+# Release artifacts (binaries, packages)
+# These should be distributed via GitHub Releases, not committed
+release/
 
 # Added by cargo
 
