@@ -193,9 +193,7 @@ impl SourcesList {
             .iter()
             .filter(|e| {
                 entry_type.is_none_or(|t| e.entry_type == t)
-                    && uri.is_none_or(|u| {
-                        e.uri.trim_end_matches('/') == u.trim_end_matches('/')
-                    })
+                    && uri.is_none_or(|u| e.uri.trim_end_matches('/') == u.trim_end_matches('/'))
                     && dist.is_none_or(|d| e.dist == d)
             })
             .collect()
