@@ -65,15 +65,24 @@ These are specified in `Cargo.toml` and installed automatically by cargo:
 ```toml
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }
-anyhow = "1.0"
-thiserror = "1.0"
+libc = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 
-# Phase-specific dependencies will be added later:
-# - rust-apt or libapt-pkg bindings
-# - reqwest for HTTP/API calls
-# - gpgme or sequoia-openpgp for GPG operations
-# - serde for serialization
+[dev-dependencies]
+tempfile = "3"
 ```
+
+**Dependency notes:**
+- `clap`: CLI argument parsing with derive macros (essential for --flags)
+- `libc`: System calls for root permission checks (`geteuid()`)
+- `serde` + `serde_json`: JSON deserialization for Launchpad PPA API
+- `tempfile`: Testing only - creates temporary directories for unit tests
+
+**Previously used (removed in v0.2.0+):**
+- ~~`chrono`~~: Was for timestamp-based backups, but `.save` suffix used instead
+- ~~`anyhow`~~: Removed - custom `AppError` provides better control for exit codes
+- ~~`thiserror`~~: Removed - manual error impl needed for Python compatibility
 
 ## WSL-Specific Considerations
 
