@@ -333,14 +333,25 @@ This implementation maintains compatibility with the Python `add-apt-repository`
 
 ## Contributing
 
-This project follows an incremental, phase-based development approach. See [docs/development/](docs/development/) for the complete development history and phase summaries.
+We welcome contributions! This project uses **Trunk-Based Development** for a simple, streamlined workflow.
 
-Guidelines:
-- Each feature must be fully tested
+**Quick start:**
+1. Fork the repository
+2. Create a feature branch from `trunk`
+3. Make your changes (ensure tests pass: `cargo test`)
+4. Create a Pull Request to `trunk`
+
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for complete guidelines including:
+- Development workflow and branch conventions
+- Code quality requirements
+- Testing procedures
+- PR guidelines and review process
+
+**Key principles:**
+- All changes flow through `trunk` branch via Pull Requests
+- Each PR must pass all tests and linting checks
 - Maintain behavioral compatibility with Python version
-- Follow Rust best practices and idioms
-- Document all public APIs
-- Update relevant documentation
+- Keep changes focused and well-tested
 
 ## License
 

@@ -3,7 +3,7 @@ Upstream-Name: rust-add-apt-repository
 Source: https://github.com/maw629/rust-add-apt-repository
 
 Files: *
-Copyright: 2026 rust-add-apt-repository contributors
+Copyright: 2026 Hardy Nguyen <maw.signup@gmail.com>
 License: GPL-2+
 
 License: GPL-2+
