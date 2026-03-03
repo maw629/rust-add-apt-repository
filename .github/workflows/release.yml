@@ -37,7 +37,7 @@ jobs:
           echo "✅ Verified: Running release for tag ${{ github.ref_name }}"
 
       - name: Install Rust 1.93.0
-        uses: dtolnay/rust-toolchain@1.93.0
+        uses: dtolnay/rust-toolchain@1.100.0
 
       - name: Install build dependencies
         run: |
