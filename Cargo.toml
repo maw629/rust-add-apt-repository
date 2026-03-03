@@ -1,6 +1,6 @@
 [package]
 name = "rust-add-apt-repository"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["Hardy Nguyen <maw.signup@gmail.com>"]
 description = "Rust implementation of add-apt-repository - manage APT repositories, PPAs, and Cloud Archives"
