@@ -40,4 +40,21 @@ updates:
     #   - dependency-name: "chrono"
     #     versions: ["0.5.x"]
 
-  # GitHub Actions monitoring will be added when CI/CD is implemented
+  # Monitor GitHub Actions workflow dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "02:00"
+      timezone: "Asia/Bangkok"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(ci)"
+    reviewers:
+      - "maw629"
+    assignees:
+      - "maw629"
