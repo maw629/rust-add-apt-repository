@@ -4,6 +4,8 @@ A Rust implementation of Debian/Ubuntu's `add-apt-repository` command, designed 
 
 **Project Status:** Version 0.2.0 - 100% complete (all 13 phases implemented), 95/95 tests passing, production ready.
 
+**Development Workflow:** This project uses **Trunk-Based Development** (TBD) with `trunk` as the default branch. All changes flow through Pull Requests to `trunk`. See [CONTRIBUTING.md](../CONTRIBUTING.md) for complete workflow guidelines.
+
 ## Build, Test, and Lint
 
 ### Building
@@ -225,29 +227,51 @@ Debug output goes to stderr with `[DEBUG]` prefix.
 
 ### Dependency Management
 
-**Key dependencies:**
-- `clap` (4.4) - CLI argument parsing with derive macros
-- `libc` - Low-level system calls
-- `serde`/`serde_json` - JSON parsing for Launchpad API
+**Production dependencies (4 total):**
+- `clap` (4.4+) - CLI argument parsing with derive macros
+- `libc` (0.2) - Low-level system calls (root permission checks)
+- `serde` (1.0) - Serialization framework with derive support
+- `serde_json` (1.0) - JSON parsing for Launchpad API
 
-**System library bindings** (via build.rs or direct FFI):
+**Dev dependencies:**
+- `tempfile` (3) - Temporary directories/files for unit tests
+
+**Removed dependencies:**
+- ~~`chrono`~~ - Removed in v0.2.0 (unused after backup system changed to .save suffix)
+- ~~`anyhow`~~ - Removed in v0.2.0 (custom AppError provides better control)
+- ~~`thiserror`~~ - Removed in v0.2.0 (manual error impl needed for exit codes)
+
+**System library bindings** (linked at runtime, not in Cargo.toml):
 - `libapt-pkg-dev` - APT library integration
 - `libgpgme-dev` - GPG key operations
 - `libssl-dev` - HTTPS connections
 
-When adding dependencies, consider behavioral compatibility and keep minimal.
+**Dependency philosophy:**
+- Keep minimal (currently 4 production deps)
+- Prioritize std library over external crates when practical
+- Manual implementations acceptable when they provide better control
+- Consider behavioral compatibility with Python version
+- Avoid proc-macro heavy crates unless they provide significant value
 
 ### Commit Practices
 
-Follow the phase-based development approach documented in `docs/development/`:
-- Each feature gets thorough testing before commit
-- Commit messages should be descriptive
-- Update relevant documentation with code changes
-- Phase summaries document major milestones (Phases 0-12 complete)
+This project follows **Trunk-Based Development** workflow:
+- All changes merge to `trunk` branch via Pull Requests
+- Feature branches are short-lived (hours to days, not weeks)
+- Commits must include Co-authored-by trailer: `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`
+- Commit messages should be descriptive with conventional commits format (`feat:`, `fix:`, `chore:`, `docs:`)
+
+**Pull Request requirements:**
+- All 95 tests must pass (`cargo test`)
+- Code must pass clippy lints (`cargo clippy`)
+- Changes must maintain Python behavioral compatibility
+- Documentation updates for user-facing changes
 
 **Development documentation:**
 - `docs/development/plan.md` - Complete implementation history and strategy
 - `docs/development/source-analysis.md` - Python code analysis and behavioral notes
+- `docs/development/PHASE-{0-12}-SUMMARY.md` - Detailed phase documentation
+- `CONTRIBUTING.md` - Complete workflow and contribution guidelines
 - `docs/development/PHASE-{0-12}-SUMMARY.md` - Detailed phase documentation
 
 ## Development Notes
@@ -255,7 +279,11 @@ Follow the phase-based development approach documented in `docs/development/`:
 ### Critical Implementation Details
 
 **Backup Strategy:**
-The project uses selective backup - only repositories that are actually modified get backed up (moved to `.save` files). This prevents unnecessary backup of unrelated repositories. The backup logic is in `sourceslist.rs`.
+The project uses selective backup with `.save` extension (matching Python version):
+- Only files that are actually modified get backed up (tracked via `HashSet<PathBuf>`)
+- Backup files use `.save` extension (e.g., `file.list.save`)
+- APT properly ignores `.save` files during repository scanning
+- The backup logic is in `sourceslist.rs` using dirty file tracking
 
 **Incremental Development Approach:**
 - Implement → Test → Commit → Review (not all at once)
