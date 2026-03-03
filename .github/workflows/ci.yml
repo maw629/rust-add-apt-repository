@@ -5,6 +5,8 @@ on:
     branches: [trunk]
   push:
     branches: [trunk]
+    tags:
+      - 'v*.*.*'  # Run CI on version tags
 
 env:
   CARGO_TERM_COLOR: always

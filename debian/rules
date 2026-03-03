@@ -1,16 +1,19 @@
 #!/usr/bin/make -f
 
+# Use rustup's cargo if available, otherwise use system cargo
+CARGO := $(shell if [ -f ~/.cargo/bin/cargo ]; then echo ~/.cargo/bin/cargo; else echo cargo; fi)
+
 %:
 	dh $@
 
 override_dh_auto_clean:
-	cargo clean || true
+	$(CARGO) clean || true
 
 override_dh_auto_build:
-	cargo build --release
+	$(CARGO) build --release
 
 override_dh_auto_test:
-	cargo test --release
+	$(CARGO) test --release
 
 override_dh_auto_install:
 	# Install binary
