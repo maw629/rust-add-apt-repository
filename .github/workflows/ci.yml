@@ -17,8 +17,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Rust 1.75.0
-        uses: dtolnay/rust-toolchain@1.75.0
+      - name: Install Rust 1.93.0
+        uses: dtolnay/rust-toolchain@1.93.0
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -48,8 +48,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Rust 1.75.0
-        uses: dtolnay/rust-toolchain@1.75.0
+      - name: Install Rust 1.93.0
+        uses: dtolnay/rust-toolchain@1.93.0
 
       - name: Install system dependencies
         run: |
@@ -88,8 +88,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Rust 1.75.0
-        uses: dtolnay/rust-toolchain@1.75.0
+      - name: Install Rust 1.93.0
+        uses: dtolnay/rust-toolchain@1.93.0
         with:
           components: clippy, rustfmt
 
@@ -124,8 +124,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Rust 1.75.0
-        uses: dtolnay/rust-toolchain@1.75.0
+      - name: Install Rust 1.93.0
+        uses: dtolnay/rust-toolchain@1.93.0
 
       - name: Install system dependencies
         run: |

@@ -59,6 +59,10 @@ git checkout -b fix-something
 
 Follow these guidelines:
 
+#### Prerequisites
+
+This project requires **Rust 1.93.0 or later**. The version is pinned in `rust-toolchain.toml` to ensure consistency between local development and CI/CD pipelines.
+
 #### Code Quality Requirements
 
 ```bash
