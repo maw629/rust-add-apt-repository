@@ -48,11 +48,7 @@ pub fn is_ubuntu_official(uri: &str) -> bool {
 
 /// Check if a URI matches known Debian repository patterns
 pub fn is_debian_official(uri: &str) -> bool {
-    let debian_patterns = [
-        "deb.debian.org",
-        "security.debian.org",
-        "ftp.debian.org",
-    ];
+    let debian_patterns = ["deb.debian.org", "security.debian.org", "ftp.debian.org"];
 
     debian_patterns.iter().any(|pattern| uri.contains(pattern))
 }
@@ -90,15 +86,17 @@ pub fn validate_suite(suite: &str) -> Result<()> {
 
     // Check for common mistakes
     if suite.contains(' ') {
-        return Err(AppError::InvalidInput(
-            format!("Suite contains spaces: '{}'. Did you mean to use components?", suite)
-        ));
+        return Err(AppError::InvalidInput(format!(
+            "Suite contains spaces: '{}'. Did you mean to use components?",
+            suite
+        )));
     }
 
     if suite.starts_with('/') || suite.contains("..") {
-        return Err(AppError::InvalidInput(
-            format!("Suite looks like a path: '{}'", suite)
-        ));
+        return Err(AppError::InvalidInput(format!(
+            "Suite looks like a path: '{}'",
+            suite
+        )));
     }
 
     crate::debug_log!("Suite validation passed: {}", suite);
@@ -106,6 +104,7 @@ pub fn validate_suite(suite: &str) -> Result<()> {
 }
 
 /// Check if two entries are equivalent (ignoring order of components)
+#[allow(clippy::too_many_arguments)]
 pub fn entries_match(
     type1: &crate::sources::SourceType,
     uri1: &str,
@@ -221,8 +220,17 @@ mod tests {
 
     #[test]
     fn test_get_repo_type() {
-        assert_eq!(get_repo_type("http://archive.ubuntu.com/ubuntu"), "Official Ubuntu repository");
-        assert_eq!(get_repo_type("http://ppa.launchpad.net/user/ppa"), "Ubuntu PPA");
-        assert_eq!(get_repo_type("http://example.com/repo"), "Third-party repository");
+        assert_eq!(
+            get_repo_type("http://archive.ubuntu.com/ubuntu"),
+            "Official Ubuntu repository"
+        );
+        assert_eq!(
+            get_repo_type("http://ppa.launchpad.net/user/ppa"),
+            "Ubuntu PPA"
+        );
+        assert_eq!(
+            get_repo_type("http://example.com/repo"),
+            "Third-party repository"
+        );
     }
 }

@@ -28,7 +28,7 @@ pub struct PPAInfo {
 /// Format: ppa:user/ppa-name or ppa:user/distribution/ppa-name
 pub fn parse_ppa_shortcut(ppa_spec: &str) -> Result<(String, String)> {
     let ppa_spec = ppa_spec.trim();
-    
+
     // Remove "ppa:" prefix if present
     let spec = if let Some(stripped) = ppa_spec.strip_prefix("ppa:") {
         stripped
@@ -38,7 +38,7 @@ pub fn parse_ppa_shortcut(ppa_spec: &str) -> Result<(String, String)> {
 
     // Split by /
     let parts: Vec<&str> = spec.split('/').collect();
-    
+
     match parts.len() {
         2 => {
             // Format: user/ppa-name (most common)
@@ -49,9 +49,10 @@ pub fn parse_ppa_shortcut(ppa_spec: &str) -> Result<(String, String)> {
             // We ignore the distribution part for now and use the last as ppa name
             Ok((parts[0].to_string(), parts[2].to_string()))
         }
-        _ => Err(AppError::InvalidInput(
-            format!("Invalid PPA format: {}. Expected ppa:user/ppa-name", ppa_spec)
-        )),
+        _ => Err(AppError::InvalidInput(format!(
+            "Invalid PPA format: {}. Expected ppa:user/ppa-name",
+            ppa_spec
+        ))),
     }
 }
 
@@ -62,10 +63,7 @@ pub fn fetch_ppa_info(owner: &str, ppa_name: &str) -> Result<PPAInfo> {
         owner, ppa_name
     );
 
-    let output = Command::new("curl")
-        .arg("-fsSL")
-        .arg(&api_url)
-        .output()?;
+    let output = Command::new("curl").arg("-fsSL").arg(&api_url).output()?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -76,10 +74,9 @@ pub fn fetch_ppa_info(owner: &str, ppa_name: &str) -> Result<PPAInfo> {
     }
 
     let json_data = String::from_utf8_lossy(&output.stdout);
-    
-    serde_json::from_str(&json_data).map_err(|e| {
-        AppError::General(format!("Failed to parse Launchpad API response: {}", e))
-    })
+
+    serde_json::from_str(&json_data)
+        .map_err(|e| AppError::General(format!("Failed to parse Launchpad API response: {}", e)))
 }
 
 /// Get GPG key from Ubuntu keyserver
@@ -106,7 +103,10 @@ pub fn fetch_ppa_key(fingerprint: &str) -> Result<String> {
 
 /// Construct PPA repository URI
 pub fn construct_ppa_uri(owner: &str, ppa_name: &str) -> String {
-    format!("https://ppa.launchpadcontent.net/{}/{}/ubuntu", owner, ppa_name)
+    format!(
+        "https://ppa.launchpadcontent.net/{}/{}/ubuntu",
+        owner, ppa_name
+    )
 }
 
 /// Create a Repository from PPA specification
@@ -118,20 +118,20 @@ pub fn create_ppa_repository(
 ) -> Result<Repository> {
     // Parse PPA shortcut
     let (owner, ppa_name) = parse_ppa_shortcut(ppa_spec)?;
-    
+
     println!("Fetching PPA information from Launchpad...");
-    
+
     // Fetch PPA info from Launchpad
     let ppa_info = fetch_ppa_info(&owner, &ppa_name)?;
-    
+
     // Check if private
     if ppa_info.private {
         if !use_login {
             return Err(AppError::General(
-                "This PPA is private. Use --login flag to authenticate with Launchpad.".to_string()
+                "This PPA is private. Use --login flag to authenticate with Launchpad.".to_string(),
             ));
         }
-        
+
         // Handle private PPA authentication
         return create_private_ppa_repository(
             &owner,
@@ -141,20 +141,20 @@ pub fn create_ppa_repository(
             components,
         );
     }
-    
+
     // Construct URI
     let uri = construct_ppa_uri(&owner, &ppa_name);
-    
+
     // Get distribution
     let dist = utils::get_distro_codename()?;
-    
+
     // Use provided components or default to "main"
     let comps = if components.is_empty() {
         vec!["main".to_string()]
     } else {
         components.to_vec()
     };
-    
+
     // Create repository file
     let filename = format!("{}-ubuntu-{}-{}", owner, ppa_name, dist);
     let file = PathBuf::from(format!(
@@ -162,11 +162,11 @@ pub fn create_ppa_repository(
         crate::config::SOURCES_LIST_D_PATH,
         filename
     ));
-    
+
     let mut repo = Repository::new(file);
     repo.description = Some(ppa_info.display_name.clone());
     repo.enable_source = enable_source;
-    
+
     // Add binary entry
     let mut binary_entry = crate::sources::SourceEntry::new(
         SourceType::Binary,
@@ -176,19 +176,15 @@ pub fn create_ppa_repository(
     );
     binary_entry.file = repo.file.clone();
     repo.entries.push(binary_entry);
-    
+
     // Add source entry if requested
     if enable_source {
-        let mut source_entry = crate::sources::SourceEntry::new(
-            SourceType::Source,
-            uri,
-            dist,
-            comps,
-        );
+        let mut source_entry =
+            crate::sources::SourceEntry::new(SourceType::Source, uri, dist, comps);
         source_entry.file = repo.file.clone();
         repo.entries.push(source_entry);
     }
-    
+
     // Fetch and set GPG key
     if let Some(fingerprint) = ppa_info.signing_key_fingerprint {
         println!("Fetching GPG key {} from keyserver...", fingerprint);
@@ -202,7 +198,7 @@ pub fn create_ppa_repository(
             }
         }
     }
-    
+
     Ok(repo)
 }
 
@@ -216,54 +212,58 @@ fn create_private_ppa_repository(
 ) -> Result<Repository> {
     println!("\nThis is a private PPA. Authentication required.");
     println!("Please provide your Launchpad credentials.\n");
-    
+
     // For private PPAs, we need to get the subscription URL
     // The Python implementation uses: me.getArchiveSubscriptionURL(archive)
     // This requires authenticated Launchpad API access
-    
+
     // For now, we'll implement a simpler approach:
     // Ask user for credentials directly (username + subscription token)
     // In a full implementation, this would integrate with Launchpad OAuth
-    
+
     use std::io::{self, Write};
-    
+
     print!("Launchpad username: ");
     io::stdout().flush()?;
     let mut username = String::new();
     io::stdin().read_line(&mut username)?;
     let username = username.trim().to_string();
-    
+
     if username.is_empty() {
-        return Err(AppError::InvalidInput("Username cannot be empty".to_string()));
+        return Err(AppError::InvalidInput(
+            "Username cannot be empty".to_string(),
+        ));
     }
-    
+
     print!("Subscription token (or password): ");
     io::stdout().flush()?;
     let mut token = String::new();
     io::stdin().read_line(&mut token)?;
     let token = token.trim().to_string();
-    
+
     if token.is_empty() {
-        return Err(AppError::InvalidInput("Token/password cannot be empty".to_string()));
+        return Err(AppError::InvalidInput(
+            "Token/password cannot be empty".to_string(),
+        ));
     }
-    
+
     // Store authentication credentials
     println!("\nStoring authentication credentials...");
     auth::add_auth(owner, ppa_name, &username, &token)?;
-    
+
     // Construct URI (same as public PPA)
     let uri = construct_ppa_uri(owner, ppa_name);
-    
+
     // Get distribution
     let dist = utils::get_distro_codename()?;
-    
+
     // Use provided components or default to "main"
     let comps = if components.is_empty() {
         vec!["main".to_string()]
     } else {
         components.to_vec()
     };
-    
+
     // Create repository file
     let filename = format!("{}-ubuntu-{}-{}", owner, ppa_name, dist);
     let file = PathBuf::from(format!(
@@ -271,11 +271,11 @@ fn create_private_ppa_repository(
         crate::config::SOURCES_LIST_D_PATH,
         filename
     ));
-    
+
     let mut repo = Repository::new(file);
     repo.description = Some(ppa_info.display_name.clone());
     repo.enable_source = enable_source;
-    
+
     // Add binary entry
     let mut binary_entry = crate::sources::SourceEntry::new(
         SourceType::Binary,
@@ -285,19 +285,15 @@ fn create_private_ppa_repository(
     );
     binary_entry.file = repo.file.clone();
     repo.entries.push(binary_entry);
-    
+
     // Add source entry if requested
     if enable_source {
-        let mut source_entry = crate::sources::SourceEntry::new(
-            SourceType::Source,
-            uri,
-            dist,
-            comps,
-        );
+        let mut source_entry =
+            crate::sources::SourceEntry::new(SourceType::Source, uri, dist, comps);
         source_entry.file = repo.file.clone();
         repo.entries.push(source_entry);
     }
-    
+
     // Fetch and set GPG key (if available)
     if let Some(fingerprint) = &ppa_info.signing_key_fingerprint {
         println!("Fetching GPG key {} from keyserver...", fingerprint);
@@ -311,10 +307,10 @@ fn create_private_ppa_repository(
             }
         }
     }
-    
+
     println!("\nPrivate PPA authentication configured successfully.");
     println!("Note: Make sure you have a valid subscription to this PPA.");
-    
+
     Ok(repo)
 }
 
@@ -357,7 +353,10 @@ mod tests {
     #[test]
     fn test_construct_ppa_uri() {
         let uri = construct_ppa_uri("deadsnakes", "ppa");
-        assert_eq!(uri, "https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu");
+        assert_eq!(
+            uri,
+            "https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu"
+        );
     }
 
     #[test]

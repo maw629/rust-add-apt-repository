@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::str::FromStr;
 
 /// Represents a single APT source entry (one line in sources.list)
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,8 +24,8 @@ pub struct SourceEntry {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum SourceType {
-    Binary,  // deb
-    Source,  // deb-src
+    Binary, // deb
+    Source, // deb-src
 }
 
 impl SourceType {
@@ -34,24 +35,23 @@ impl SourceType {
             SourceType::Source => "deb-src",
         }
     }
+}
 
-    pub fn from_str(s: &str) -> Option<Self> {
+impl FromStr for SourceType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "deb" => Some(SourceType::Binary),
-            "deb-src" => Some(SourceType::Source),
-            _ => None,
+            "deb" => Ok(SourceType::Binary),
+            "deb-src" => Ok(SourceType::Source),
+            _ => Err(()),
         }
     }
 }
 
 impl SourceEntry {
     /// Create a new SourceEntry
-    pub fn new(
-        entry_type: SourceType,
-        uri: String,
-        dist: String,
-        components: Vec<String>,
-    ) -> Self {
+    pub fn new(entry_type: SourceType, uri: String, dist: String, components: Vec<String>) -> Self {
         Self {
             entry_type,
             uri,
@@ -67,7 +67,7 @@ impl SourceEntry {
     /// Parse a sources.list line into a SourceEntry
     pub fn from_line(line: &str, file: PathBuf) -> Option<Self> {
         let trimmed = line.trim();
-        
+
         // Check if disabled (commented)
         let (disabled, content) = if let Some(stripped) = trimmed.strip_prefix('#') {
             (true, stripped.trim())
@@ -81,13 +81,13 @@ impl SourceEntry {
         }
 
         let parts: Vec<&str> = content.split_whitespace().collect();
-        
+
         // Need at least: type uri dist
         if parts.len() < 3 {
             return None;
         }
 
-        let entry_type = SourceType::from_str(parts[0])?;
+        let entry_type = SourceType::from_str(parts[0]).ok()?;
         let uri = parts[1].to_string();
         let dist = parts[2].to_string();
         let components: Vec<String> = parts[3..].iter().map(|s| s.to_string()).collect();
@@ -182,7 +182,7 @@ mod tests {
     fn test_source_entry_from_line() {
         let line = "deb http://archive.ubuntu.com/ubuntu noble main restricted";
         let entry = SourceEntry::from_line(line, PathBuf::from("/etc/apt/sources.list")).unwrap();
-        
+
         assert_eq!(entry.entry_type, SourceType::Binary);
         assert_eq!(entry.uri, "http://archive.ubuntu.com/ubuntu");
         assert_eq!(entry.dist, "noble");
@@ -194,7 +194,7 @@ mod tests {
     fn test_source_entry_disabled() {
         let line = "# deb http://archive.ubuntu.com/ubuntu noble main";
         let entry = SourceEntry::from_line(line, PathBuf::from("/etc/apt/sources.list")).unwrap();
-        
+
         assert!(entry.disabled);
         assert_eq!(entry.entry_type, SourceType::Binary);
     }
@@ -203,7 +203,7 @@ mod tests {
     fn test_source_entry_deb_src() {
         let line = "deb-src http://archive.ubuntu.com/ubuntu noble main universe";
         let entry = SourceEntry::from_line(line, PathBuf::from("/etc/apt/sources.list")).unwrap();
-        
+
         assert_eq!(entry.entry_type, SourceType::Source);
         assert_eq!(entry.components, vec!["main", "universe"]);
     }
@@ -216,9 +216,12 @@ mod tests {
             "noble".to_string(),
             vec!["main".to_string(), "restricted".to_string()],
         );
-        
+
         let line = entry.to_line();
-        assert_eq!(line, "deb http://archive.ubuntu.com/ubuntu noble main restricted");
+        assert_eq!(
+            line,
+            "deb http://archive.ubuntu.com/ubuntu noble main restricted"
+        );
     }
 
     #[test]
@@ -229,14 +232,14 @@ mod tests {
             "noble".to_string(),
             vec!["main".to_string()],
         );
-        
+
         let entry2 = SourceEntry::new(
             SourceType::Binary,
             "http://example.com".to_string(),
             "noble".to_string(),
             vec!["main".to_string()],
         );
-        
+
         assert!(entry1.matches(&entry2));
     }
 }

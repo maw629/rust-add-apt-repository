@@ -30,9 +30,7 @@ pub fn create_dir_if_not_exists(path: &Path) -> Result<()> {
 
 /// Read file contents as string
 pub fn read_file_to_string(path: &Path) -> Result<String> {
-    fs::read_to_string(path).map_err(|e| {
-        AppError::Io(e)
-    })
+    fs::read_to_string(path).map_err(AppError::Io)
 }
 
 /// Write string to file with specific permissions
@@ -43,10 +41,10 @@ pub fn write_string_to_file(path: &Path, content: &str, mode: u32) -> Result<()>
     }
 
     fs::write(path, content)?;
-    
+
     let permissions = fs::Permissions::from_mode(mode);
     fs::set_permissions(path, permissions)?;
-    
+
     Ok(())
 }
 
@@ -60,7 +58,7 @@ pub fn backup_file(path: &Path) -> Result<PathBuf> {
 /// List all .list files in sources.list.d directory
 pub fn list_sources_list_d_files() -> Result<Vec<PathBuf>> {
     let sources_d = Path::new(crate::config::SOURCES_LIST_D_PATH);
-    
+
     if !sources_d.exists() {
         return Ok(Vec::new());
     }
@@ -69,7 +67,7 @@ pub fn list_sources_list_d_files() -> Result<Vec<PathBuf>> {
     for entry in fs::read_dir(sources_d)? {
         let entry = entry?;
         let path = entry.path();
-        
+
         if path.is_file() {
             if let Some(ext) = path.extension() {
                 if ext == "list" {
@@ -78,7 +76,7 @@ pub fn list_sources_list_d_files() -> Result<Vec<PathBuf>> {
             }
         }
     }
-    
+
     files.sort();
     Ok(files)
 }
@@ -86,7 +84,7 @@ pub fn list_sources_list_d_files() -> Result<Vec<PathBuf>> {
 /// List all .sources files in sources.list.d directory (DEB822 format)
 pub fn list_sources_list_d_deb822_files() -> Result<Vec<PathBuf>> {
     let sources_d = Path::new(crate::config::SOURCES_LIST_D_PATH);
-    
+
     if !sources_d.exists() {
         return Ok(Vec::new());
     }
@@ -95,7 +93,7 @@ pub fn list_sources_list_d_deb822_files() -> Result<Vec<PathBuf>> {
     for entry in fs::read_dir(sources_d)? {
         let entry = entry?;
         let path = entry.path();
-        
+
         if path.is_file() {
             if let Some(ext) = path.extension() {
                 if ext == "sources" {
@@ -104,7 +102,7 @@ pub fn list_sources_list_d_deb822_files() -> Result<Vec<PathBuf>> {
             }
         }
     }
-    
+
     files.sort();
     Ok(files)
 }
@@ -132,7 +130,9 @@ pub fn get_distro_codename() -> Result<String> {
         }
     }
 
-    Err(AppError::General("Could not determine distribution codename".to_string()))
+    Err(AppError::General(
+        "Could not determine distribution codename".to_string(),
+    ))
 }
 
 #[cfg(test)]
