@@ -1,7 +1,9 @@
 # rust-add-apt-repository
 
 [![License: GPL v2+](https://img.shields.io/badge/License-GPL%20v2+-blue.svg)](https://www.gnu.org/licenses/gpl-2.0)
-[![Version](https://img.shields.io/badge/version-0.2.0-green.svg)](https://github.com/maw629/rust-add-apt-repository/releases)
+[![Version](https://img.shields.io/badge/version-0.2.1-green.svg)](https://github.com/maw629/rust-add-apt-repository/releases)
+[![CI](https://github.com/maw629/rust-add-apt-repository/workflows/CI/badge.svg)](https://github.com/maw629/rust-add-apt-repository/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-95%20passing-success.svg)](https://github.com/maw629/rust-add-apt-repository/actions/workflows/ci.yml)
 
 A Rust implementation of the Debian/Ubuntu `add-apt-repository` command, designed for behavioral compatibility with the Python version from `software-properties-common` while being installable alongside the original.
 
