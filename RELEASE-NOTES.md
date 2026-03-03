@@ -24,15 +24,35 @@ This patch release fixes the GitHub release workflow for easier operation. All f
   - Fails fast with clear error message if branch selected
   - Provides step-by-step instructions for correct usage
 
+### 📦 Dependency Management Improvements
+
+#### Tilde Version Requirements
+- **Switched to tilde requirements** (`~X.Y`) for all Cargo dependencies
+  - Makes dependency updates visible in Cargo.toml (not just Cargo.lock)
+  - Locks to minor versions while allowing patch updates
+  - Improves Dependabot PR clarity and reviewability
+  
+#### Dependency Updates via Dependabot
+- **tempfile**: 3.8.0 → 3.26.0 (dev-dependency)
+  - 18 minor versions of bug fixes and platform improvements
+  - Only affects test code
+- **GitHub Actions updates**:
+  - `actions/cache`: v4 → v5 (Node.js 24 runtime)
+  - `actions/checkout`: v4 → v6 (improved credential handling)
+
 ### 📊 Changes
 
-- **Files Modified**: 2 files
+- **Files Modified**: 6 files
   - `.github/workflows/release.yml` - Simplified workflow
+  - `.github/workflows/ci.yml` - Updated actions versions
   - `.github/copilot-instructions.md` - Updated release instructions
+  - `Cargo.toml` - Switched to tilde version requirements
+  - `Cargo.lock` - Updated locked versions
+  - `DEPENDENCIES.md` - Documented versioning strategy
 
 ### 🎯 Impact
 
-This release only improves the release automation process. All code features, bug fixes, and functionality from v0.2.0 remain unchanged.
+This release improves the development workflow through better dependency management visibility and simplified release process. All code features, bug fixes, and functionality from v0.2.0 remain unchanged.
 
 ---
 

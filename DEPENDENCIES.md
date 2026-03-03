@@ -64,13 +64,13 @@ These are specified in `Cargo.toml` and installed automatically by cargo:
 
 ```toml
 [dependencies]
-clap = { version = "4.4", features = ["derive"] }
-libc = "0.2"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+clap = { version = "~4.5", features = ["derive"] }
+libc = "~0.2"
+serde = { version = "~1.0", features = ["derive"] }
+serde_json = "~1.0"
 
 [dev-dependencies]
-tempfile = "3"
+tempfile = "~3.26"
 ```
 
 **Dependency notes:**
@@ -78,6 +78,12 @@ tempfile = "3"
 - `libc`: System calls for root permission checks (`geteuid()`)
 - `serde` + `serde_json`: JSON deserialization for Launchpad PPA API
 - `tempfile`: Testing only - creates temporary directories for unit tests
+
+**Version strategy:**
+- Uses tilde requirements (`~X.Y`) to lock to minor versions
+- Allows automatic patch updates (e.g., `~3.26` accepts 3.26.0 → 3.26.9)
+- Provides balance between stability and security patches
+- Makes version changes visible in Cargo.toml (not just Cargo.lock)
 
 **Previously used (removed in v0.2.0+):**
 - ~~`chrono`~~: Was for timestamp-based backups, but `.save` suffix used instead

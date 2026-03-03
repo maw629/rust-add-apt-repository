@@ -272,13 +272,13 @@ Debug output goes to stderr with `[DEBUG]` prefix.
 ### Dependency Management
 
 **Production dependencies (4 total):**
-- `clap` (4.4+) - CLI argument parsing with derive macros
-- `libc` (0.2) - Low-level system calls (root permission checks)
-- `serde` (1.0) - Serialization framework with derive support
-- `serde_json` (1.0) - JSON parsing for Launchpad API
+- `clap` (~4.5) - CLI argument parsing with derive macros
+- `libc` (~0.2) - Low-level system calls (root permission checks)
+- `serde` (~1.0) - Serialization framework with derive support
+- `serde_json` (~1.0) - JSON parsing for Launchpad API
 
 **Dev dependencies:**
-- `tempfile` (3) - Temporary directories/files for unit tests
+- `tempfile` (~3.26) - Temporary directories/files for unit tests
 
 **Removed dependencies:**
 - ~~`chrono`~~ - Removed in v0.2.0 (unused after backup system changed to .save suffix)
@@ -291,11 +291,17 @@ Debug output goes to stderr with `[DEBUG]` prefix.
 - `libssl-dev` - HTTPS connections
 
 **Dependency philosophy:**
-- Keep minimal (currently 4 production deps)
+- Keep minimal - only add what's truly needed
+- Prefer stable, well-maintained crates
+- **Use tilde requirements (`~X.Y`)** for version control:
+  - Locks to minor versions (e.g., `~3.26` means ≥3.26.0, <3.27.0)
+  - Allows automatic patch updates for bug fixes
+  - Makes version changes visible in Cargo.toml (not buried in Cargo.lock)
+  - Improves Dependabot PR reviewability
 - Prioritize std library over external crates when practical
 - Manual implementations acceptable when they provide better control
 - Consider behavioral compatibility with Python version
-- Avoid proc-macro heavy crates unless they provide significant value
+- Avoid unstable APIs or nightly features
 
 ### Commit Practices
 
