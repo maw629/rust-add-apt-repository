@@ -17,6 +17,22 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history for tags
 
+      - name: Verify ref is a tag
+        run: |
+          # Check if the selected ref is actually a tag
+          if ! git describe --exact-match --tags HEAD 2>/dev/null; then
+            echo "❌ Error: You must select a tag, not a branch!"
+            echo "Current ref: ${{ github.ref_name }}"
+            echo ""
+            echo "Usage:"
+            echo "1. Go to Actions → Release workflow"
+            echo "2. Click 'Run workflow'"
+            echo "3. In 'Use workflow from' dropdown, select a TAG (e.g., v0.2.0)"
+            echo "4. Click 'Run workflow'"
+            exit 1
+          fi
+          echo "✅ Verified: Running release for tag ${{ github.ref_name }}"
+
       - name: Install Rust 1.93.0
         uses: dtolnay/rust-toolchain@1.93.0
 
