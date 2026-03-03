@@ -1,10 +1,41 @@
 # Release Notes - rust-add-apt-repository
 
-## v0.2.0 - Bug Fixes and Documentation Improvements
+## v0.2.0 - Bug Fixes, CI/CD, and Documentation Improvements
 
-**Release Date**: March 2, 2026
+**Release Date**: March 3, 2026
 
-This release focuses on critical bug fixes related to backup file handling and documentation organization.
+This release focuses on critical bug fixes related to backup file handling, introduces CI/CD automation, and includes comprehensive documentation reorganization.
+
+### 🚀 CI/CD & Automation
+
+#### GitHub Actions Workflows
+- **Continuous Integration**: Automated testing and linting on every push/PR
+  - Runs all 95 tests (74 unit + 21 integration)
+  - Enforces code formatting with `cargo fmt`
+  - Runs clippy linter to catch common issues
+  - Uses Rust 1.93.0 for consistency
+  - Triggers on branches, PRs, and version tags
+  
+- **Release Automation**: Streamlined release process with GitHub Actions
+  - Manual trigger via workflow_dispatch for controlled releases
+  - Verifies CI passed before creating release
+  - Builds both binary and .deb package
+  - Generates SHA256 checksums automatically
+  - Extracts changelog from git tag annotations
+  - Uploads artifacts to GitHub releases
+  
+- **Build Script**: Automated build process (`build-package.sh`)
+  - Single command to build complete release
+  - Creates versioned artifacts in `release/v{VERSION}/`
+  - Handles cargo build, debuild, and checksum generation
+  - Color-coded output for easy debugging
+
+#### Rust Version Management
+- **Pinned to Rust 1.93.0**: Consistent builds across local and CI environments
+  - Uses `rust-toolchain.toml` for version pinning
+  - Prevents "works on my machine" issues
+  - Updated codebase to use Rust 1.93.0 features (e.g., `is_none_or`)
+  - `debian/rules` supports both rustup and system Rust
 
 ### 🐛 Bug Fixes
 
@@ -54,18 +85,26 @@ This release focuses on critical bug fixes related to backup file handling and d
 - `src/sourceslist.rs`: Added `modified_files` tracking, format detection, backup improvements
 - `src/lib.rs`: Mark files as modified in remove operations
 - `src/sources.rs`: Added `PartialOrd` and `Ord` traits to `SourceType`
+- `.github/workflows/ci.yml`: Added CI workflow for automated testing
+- `.github/workflows/release.yml`: Added release workflow for automated releases
+- `build-package.sh`: New automated build script
+- `debian/rules`: Updated to support rustup cargo
+- `rust-toolchain.toml`: Pinned Rust version to 1.93.0
 - Documentation files: Reorganized and enhanced
 
 #### Testing
 - All 95 unit tests passing
+- CI runs automatically on all branches and PRs
 - Manual E2E testing completed
 - Backup behavior verified against Python version
 
 ### 📊 Statistics
 
-- **Commits**: 7 since v0.1.0
-- **Files Changed**: 20+ files
+- **Commits**: 14 since v0.1.0
+- **Pull Requests**: 5 merged (CI setup, dependency cleanup, Rust upgrade, release workflow)
+- **Files Changed**: 25+ files
 - **Bug Fixes**: 4 critical issues resolved
+- **CI/CD**: Complete automation infrastructure
 - **Documentation**: Comprehensive reorganization
 
 ### 🙏 Contributors
