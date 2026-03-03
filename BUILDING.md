@@ -53,8 +53,10 @@ You'll need the following categories of packages:
 
 ### Minimum Versions
 
-- **Rust**: 1.70.0 or newer
+- **Rust**: 1.93.0 (pinned in rust-toolchain.toml)
 - **Debhelper**: 11 or newer (for Debian packaging)
+
+**Note**: This project uses Rust 1.93.0 features and is pinned to this version for consistency across local development and CI/CD environments.
 
 ## Rust Installation
 
@@ -62,38 +64,32 @@ You have two options for installing Rust:
 
 ### Option 1: Using rustup (Recommended)
 
-Rustup is the official Rust toolchain manager and ensures you have the latest stable version:
+Rustup is the official Rust toolchain manager. This project requires Rust 1.93.0:
 
 ```bash
-# Download and install rustup
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# Follow the on-screen prompts (usually just press Enter for defaults)
+# Download and install rustup with Rust 1.93.0
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.93.0
 
 # Load Rust environment in current shell
 source $HOME/.cargo/env
 
-# Verify installation
+# Verify installation (should show 1.93.0)
 rustc --version
 cargo --version
 ```
 
-The rustup installer will:
-- Install the latest stable Rust toolchain
-- Install cargo (Rust package manager)
-- Add cargo binaries to your PATH
-- Set up shell integration
+The project includes `rust-toolchain.toml` which automatically uses Rust 1.93.0 when building.
 
 ### Option 2: Using System Package Manager
 
-Alternatively, install Rust via apt (may be an older version):
+**Warning**: System packages typically provide older Rust versions that may not be compatible with this project (requires 1.93.0). Rustup is strongly recommended.
 
 ```bash
 sudo apt update
 sudo apt install rustc cargo
 ```
 
-**Note**: System packages may provide older Rust versions. Use rustup if you need a specific version.
+If you must use the system package, you'll need to ensure it provides Rust 1.93.0 or newer.
 
 ## Install System Dependencies
 
@@ -207,13 +203,36 @@ sudo chmod 755 /usr/local/bin/rust-add-apt-repository
 
 Building a Debian package allows for easier installation and dependency management.
 
-### 1. Ensure Packaging Tools are Installed
+### Method 1: Using Automated Build Script (Recommended)
+
+The project includes `build-package.sh` which automates the entire build process:
+
+```bash
+# Run the automated build script
+./build-package.sh
+```
+
+This script will:
+1. Clean previous builds
+2. Build the release binary with cargo
+3. Create the .deb package with debuild
+4. Copy artifacts to `release/v{VERSION}/`
+5. Generate SHA256 checksums
+
+**Output location**: `release/v{VERSION}/`
+- Binary: `rust-add-apt-repository-v{VERSION}-x86_64-linux`
+- Package: `rust-add-apt-repository_{VERSION}-1_amd64.deb`
+- Checksums: `SHA256SUMS.txt`
+
+### Method 2: Manual Build Process
+
+#### 1. Ensure Packaging Tools are Installed
 
 ```bash
 sudo apt install -y debhelper devscripts dh-cargo
 ```
 
-### 2. Build the Package
+#### 2. Build the Package
 
 From the project root directory:
 
@@ -229,11 +248,11 @@ debuild -us -uc -b
 
 The build process will:
 1. Check build dependencies
-2. Compile the Rust code
-3. Run tests (if configured)
+2. Compile the Rust code with cargo
+3. Run tests (95 tests)
 4. Create .deb package
 
-### 3. Locate the Package
+#### 3. Locate the Package
 
 After successful build, the .deb package will be in the parent directory:
 
@@ -241,9 +260,9 @@ After successful build, the .deb package will be in the parent directory:
 ls -lh ../*.deb
 ```
 
-You should see a file like: `rust-add-apt-repository_0.1.0-1_amd64.deb`
+You should see a file like: `rust-add-apt-repository_0.2.0-1_amd64.deb`
 
-### 4. Install the Package
+#### 4. Install the Package
 
 Install using dpkg:
 

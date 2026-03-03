@@ -2,9 +2,50 @@
 
 A Rust implementation of Debian/Ubuntu's `add-apt-repository` command, designed for behavioral compatibility with the Python version from `software-properties-common` while being installable alongside it.
 
-**Project Status:** Version 0.2.0 - 100% complete (all 13 phases implemented), 95/95 tests passing, production ready.
+**Project Status:** Version 0.2.0 - 100% complete (all 13 phases implemented), 95/95 tests passing, production ready. CI/CD automated with GitHub Actions.
 
-**Development Workflow:** This project uses **Trunk-Based Development** (TBD) with `trunk` as the default branch. All changes flow through Pull Requests to `trunk`. See [CONTRIBUTING.md](../CONTRIBUTING.md) for complete workflow guidelines.
+**Development Workflow:** This project uses **Trunk-Based Development** (TBD) with `trunk` as the default branch. All changes flow through Pull Requests to `trunk`. CI runs automatically on all PRs. See [CONTRIBUTING.md](../CONTRIBUTING.md) for complete workflow guidelines.
+
+## CI/CD & Release Process
+
+### GitHub Actions Workflows
+
+**Continuous Integration (.github/workflows/ci.yml):**
+- Runs on all pushes, PRs, and version tags
+- Pinned to Rust 1.93.0 for consistency
+- Executes all 95 tests (74 unit + 21 integration)
+- Enforces code formatting (`cargo fmt --check`)
+- Runs clippy linter (`cargo clippy -- -D warnings`)
+- Ensures code quality before merging
+
+**Release Workflow (.github/workflows/release.yml):**
+- Manual trigger via workflow_dispatch
+- Verifies CI passed on target commit
+- Builds release binary and .deb package
+- Generates SHA256 checksums
+- Extracts changelog from git tag annotation
+- Creates GitHub release with artifacts
+- Artifacts: binary, .deb package, SHA256SUMS.txt
+
+### Creating a Release
+
+1. Update documentation (RELEASE-NOTES.md, README.md, etc.)
+2. Merge documentation PR to trunk
+3. Create annotated tag with changelog in description:
+   ```bash
+   git tag -a v0.X.Y -m "Release v0.X.Y
+
+   ### New Features
+   - Feature 1
+   - Feature 2
+
+   ### Bug Fixes
+   - Fix 1"
+   ```
+4. Push tag: `git push origin v0.X.Y`
+5. Wait for CI to pass on the tag
+6. Manually trigger release workflow from GitHub Actions UI
+7. Verify release artifacts uploaded successfully
 
 ## Build, Test, and Lint
 

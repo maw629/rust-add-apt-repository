@@ -12,6 +12,8 @@ A Rust implementation of the Debian/Ubuntu `add-apt-repository` command, designe
 **Production Ready:**
 - ✅ All core features implemented
 - ✅ 95 tests passing (74 unit + 21 integration)
+- ✅ CI/CD automation with GitHub Actions
+- ✅ Automated release workflow
 - ✅ Comprehensive documentation
 - ✅ Debian package available
 - ✅ Behavioral compatibility with Python version
