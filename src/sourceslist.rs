@@ -196,9 +196,9 @@ impl SourcesList {
         self.entries
             .iter()
             .filter(|e| {
-                entry_type.map_or(true, |t| e.entry_type == t)
-                    && uri.map_or(true, |u| e.uri.trim_end_matches('/') == u.trim_end_matches('/'))
-                    && dist.map_or(true, |d| e.dist == d)
+                entry_type.is_none_or(|t| e.entry_type == t)
+                    && uri.is_none_or(|u| e.uri.trim_end_matches('/') == u.trim_end_matches('/'))
+                    && dist.is_none_or(|d| e.dist == d)
             })
             .collect()
     }
