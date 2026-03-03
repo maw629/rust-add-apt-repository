@@ -30,7 +30,7 @@ pub fn create_dir_if_not_exists(path: &Path) -> Result<()> {
 
 /// Read file contents as string
 pub fn read_file_to_string(path: &Path) -> Result<String> {
-    fs::read_to_string(path).map_err(|e| AppError::Io(e))
+    fs::read_to_string(path).map_err(AppError::Io)
 }
 
 /// Write string to file with specific permissions
