@@ -19,8 +19,7 @@ A Rust implementation of Debian/Ubuntu's `add-apt-repository` command, designed 
 - Ensures code quality before merging
 
 **Release Workflow (.github/workflows/release.yml):**
-- Manual trigger via workflow_dispatch
-- Verifies CI passed on target commit
+- Manual trigger via workflow_dispatch (select tag from UI)
 - Builds release binary and .deb package
 - Generates SHA256 checksums
 - Extracts changelog from git tag annotation
@@ -43,8 +42,12 @@ A Rust implementation of Debian/Ubuntu's `add-apt-repository` command, designed 
    - Fix 1"
    ```
 4. Push tag: `git push origin v0.X.Y`
-5. Wait for CI to pass on the tag
-6. Manually trigger release workflow from GitHub Actions UI
+5. Wait for CI to pass on the tag (automatic)
+6. Manually trigger release workflow:
+   - Go to Actions → Release workflow
+   - Click "Run workflow"
+   - Select the tag (e.g., v0.X.Y) from the dropdown
+   - Click "Run workflow" button
 7. Verify release artifacts uploaded successfully
 
 ## Build, Test, and Lint
