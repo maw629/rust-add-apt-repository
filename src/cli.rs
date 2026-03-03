@@ -1,14 +1,16 @@
-use clap::{Parser, Args};
+use clap::{Args, Parser};
 
 /// Rust implementation of add-apt-repository
 #[derive(Parser, Debug)]
 #[command(name = "rust-add-apt-repository")]
 #[command(version)]
 #[command(about = "Add or remove apt repositories")]
-#[command(long_about = "Adds or removes APT repositories from /etc/apt/sources.list or /etc/apt/sources.list.d\n\n\
+#[command(
+    long_about = "Adds or removes APT repositories from /etc/apt/sources.list or /etc/apt/sources.list.d\n\n\
     Supports PPAs (ppa:user/ppa-name), Cloud Archives (cloud-archive:release), \n\
     URIs, and sources.list format lines. Can also perform global operations on \n\
-    existing repositories (components, pockets, source code).")]
+    existing repositories (components, pockets, source code)."
+)]
 #[command(after_help = "EXAMPLES:\n  \
     Add a PPA:\n    \
     sudo rust-add-apt-repository ppa:graphics-drivers/ppa\n\n  \
@@ -33,7 +35,7 @@ pub struct Cli {
     pub remove: bool,
 
     /// Enable source code (deb-src) repositories
-    /// 
+    ///
     /// Use once (-s) to enable existing commented deb-src lines.
     /// Use twice (-ss) to also add missing deb-src entries.
     /// Without a repository: operates globally on all repositories.
@@ -41,20 +43,20 @@ pub struct Cli {
     pub enable_source: u8,
 
     /// Repository component (e.g., main, universe, restricted, multiverse)
-    /// 
+    ///
     /// Can be specified multiple times: --component main --component universe
     /// Without a repository: adds/removes component globally in /etc/apt/sources.list
     #[arg(short, long, value_name = "COMPONENT")]
     pub component: Vec<String>,
 
     /// Distribution codename (e.g., noble, jammy, bookworm)
-    /// 
+    ///
     /// Defaults to current system distribution if not specified
     #[arg(long, value_name = "DIST")]
     pub dist: Option<String>,
 
     /// Add/remove pocket globally (e.g., updates, security, backports, proposed)
-    /// 
+    ///
     /// Without a repository: operates globally on all existing repositories
     #[arg(short, long, value_name = "POCKET")]
     pub pocket: Option<String>,
@@ -84,32 +86,36 @@ pub struct Cli {
 #[group(multiple = false)]
 pub struct RepoSpec {
     /// List currently configured repositories
-    #[arg(short = 'L', long, help = "Show all repositories from sources.list and sources.list.d")]
+    #[arg(
+        short = 'L',
+        long,
+        help = "Show all repositories from sources.list and sources.list.d"
+    )]
     pub list: bool,
 
     /// PPA to add (Personal Package Archive)
-    /// 
+    ///
     /// Format: ppa:user/ppa-name or ppa:user/ppa-name/release
     /// Example: ppa:graphics-drivers/ppa
     #[arg(short = 'P', long, value_name = "PPA")]
     pub ppa: Option<String>,
 
     /// Cloud Archive to add (Ubuntu OpenStack releases)
-    /// 
+    ///
     /// Format: cloud-archive:release or uca:release
     /// Example: cloud-archive:bobcat, uca:caracal
     #[arg(short = 'C', long = "cloud", value_name = "RELEASE")]
     pub cloud: Option<String>,
 
     /// Repository URI (web address)
-    /// 
+    ///
     /// Must be used with --dist and --component
     /// Example: http://archive.ubuntu.com/ubuntu
     #[arg(short = 'U', long, value_name = "URI")]
     pub uri: Option<String>,
 
     /// Full sources.list entry line
-    /// 
+    ///
     /// Format: deb [options] uri distribution [components...]
     /// Example: "deb http://archive.ubuntu.com/ubuntu noble main universe"
     #[arg(short = 'S', long, value_name = "LINE")]
@@ -144,4 +150,3 @@ impl Cli {
         }
     }
 }
-

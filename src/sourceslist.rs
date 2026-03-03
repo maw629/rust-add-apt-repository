@@ -63,7 +63,7 @@ impl SourcesList {
     /// Load sources from a single file (one-line format)
     pub fn load_file(&mut self, path: &Path) -> Result<()> {
         let content = utils::read_file_to_string(path)?;
-        
+
         for line in content.lines() {
             if let Some(entry) = SourceEntry::from_line(line, path.to_path_buf()) {
                 self.entries.push(entry);
@@ -86,14 +86,10 @@ impl SourcesList {
 
             let oneline_entries = crate::deb822::expand_to_oneline(&stanza);
             for (source_type, uri, suite, components) in oneline_entries {
-                let mut entry = SourceEntry::new(
-                    source_type,
-                    uri,
-                    suite,
-                    components,
-                );
+                let mut entry = SourceEntry::new(source_type, uri, suite, components);
                 entry.file = path.to_path_buf();
-                entry.line = format!("{} {} {} {}", 
+                entry.line = format!(
+                    "{} {} {} {}",
                     entry.entry_type.as_str(),
                     entry.uri,
                     entry.dist,
@@ -129,12 +125,12 @@ impl SourcesList {
                 // Check if all components already exist
                 let mut new_comps = components.clone();
                 new_comps.retain(|c| !existing.components.contains(c));
-                
+
                 if new_comps.is_empty() {
                     // All components already present
                     return Ok(idx);
                 }
-                
+
                 // Add missing components
                 existing.components.extend(new_comps);
                 existing.line = existing.to_line();
@@ -167,10 +163,10 @@ impl SourcesList {
         new_entry.disabled = disabled;
         new_entry.file = file.clone();
         new_entry.line = new_entry.to_line();
-        
+
         // Mark file as modified (new entry being added)
         self.modified_files.insert(file);
-        
+
         self.entries.push(new_entry);
         Ok(self.entries.len() - 1)
     }
@@ -197,7 +193,9 @@ impl SourcesList {
             .iter()
             .filter(|e| {
                 entry_type.map_or(true, |t| e.entry_type == t)
-                    && uri.map_or(true, |u| e.uri.trim_end_matches('/') == u.trim_end_matches('/'))
+                    && uri.map_or(true, |u| {
+                        e.uri.trim_end_matches('/') == u.trim_end_matches('/')
+                    })
                     && dist.map_or(true, |d| e.dist == d)
             })
             .collect()
@@ -247,7 +245,8 @@ impl SourcesList {
         for entry in &self.entries {
             let file_path = &entry.file;
             if file_path.exists() && !backed_up.contains(file_path) {
-                let backup_path = file_path.with_extension(format!("{}{}", 
+                let backup_path = file_path.with_extension(format!(
+                    "{}{}",
                     file_path.extension().and_then(|s| s.to_str()).unwrap_or(""),
                     ext
                 ));
@@ -263,7 +262,7 @@ impl SourcesList {
     pub fn restore_backup(&self, backup_ext: &str) -> Result<()> {
         let main_file = Path::new(config::SOURCES_LIST_PATH);
         let backup_file = main_file.with_extension(format!("list{}", backup_ext));
-        
+
         if backup_file.exists() && main_file.exists() {
             fs::copy(backup_file, main_file)?;
         }
@@ -322,7 +321,8 @@ impl SourcesList {
             }
 
             // Detect file format by extension
-            let is_deb822 = file_path.extension()
+            let is_deb822 = file_path
+                .extension()
                 .and_then(|ext| ext.to_str())
                 .map(|ext| ext == "sources")
                 .unwrap_or(false);
@@ -346,7 +346,8 @@ impl SourcesList {
 
     /// Backup a single file with .save extension
     fn backup_file(&self, file_path: &Path) -> Result<()> {
-        let backup_path = file_path.with_extension(format!("{}.save", 
+        let backup_path = file_path.with_extension(format!(
+            "{}.save",
             file_path.extension().and_then(|s| s.to_str()).unwrap_or("")
         ));
         fs::copy(file_path, backup_path)?;
@@ -355,10 +356,11 @@ impl SourcesList {
 
     /// Save entries as DEB822 format (for .sources files)
     fn save_as_deb822(&self, file_path: &Path, entries: &[&SourceEntry]) -> Result<()> {
-        use crate::deb822::{Deb822Stanza, write_deb822_file};
+        use crate::deb822::{write_deb822_file, Deb822Stanza};
 
         // Group entries by (uri, dist, components) to create stanzas
-        let mut stanza_map: HashMap<(String, String, Vec<String>), Vec<SourceType>> = HashMap::new();
+        let mut stanza_map: HashMap<(String, String, Vec<String>), Vec<SourceType>> =
+            HashMap::new();
 
         for entry in entries {
             let key = (
@@ -366,23 +368,20 @@ impl SourcesList {
                 entry.dist.clone(),
                 entry.components.clone(),
             );
-            stanza_map
-                .entry(key)
-                .or_default()
-                .push(entry.entry_type);
+            stanza_map.entry(key).or_default().push(entry.entry_type);
         }
 
         // Create DEB822 stanzas from grouped entries
         let mut stanzas = Vec::new();
         for ((uri, dist, components), types) in stanza_map {
             let mut stanza = Deb822Stanza::new(file_path.to_path_buf());
-            
+
             // Deduplicate types
             let mut unique_types = types.clone();
             unique_types.sort();
             unique_types.dedup();
             stanza.types = unique_types;
-            
+
             stanza.uris = vec![uri];
             stanza.suites = vec![dist];
             stanza.components = components;
@@ -391,12 +390,14 @@ impl SourcesList {
             // Try to preserve Signed-By if it was in the original file
             // Check if any entry has a keyring reference (for PPA/custom repos)
             // For system files, use the default Ubuntu keyring
-            if file_path.file_name()
+            if file_path
+                .file_name()
                 .and_then(|n| n.to_str())
                 .map(|n| n == "ubuntu.sources")
                 .unwrap_or(false)
             {
-                stanza.signed_by = Some("/usr/share/keyrings/ubuntu-archive-keyring.gpg".to_string());
+                stanza.signed_by =
+                    Some("/usr/share/keyrings/ubuntu-archive-keyring.gpg".to_string());
             }
 
             stanzas.push(stanza);
@@ -432,7 +433,10 @@ mod tests {
     fn create_test_sources_list(dir: &Path) -> Result<PathBuf> {
         let sources_file = dir.join("sources.list");
         let mut file = fs::File::create(&sources_file)?;
-        writeln!(file, "deb http://archive.ubuntu.com/ubuntu noble main restricted")?;
+        writeln!(
+            file,
+            "deb http://archive.ubuntu.com/ubuntu noble main restricted"
+        )?;
         writeln!(file, "deb-src http://archive.ubuntu.com/ubuntu noble main")?;
         writeln!(file, "# deb http://example.com/ubuntu noble universe")?;
         Ok(sources_file)
@@ -458,7 +462,7 @@ mod tests {
     #[test]
     fn test_add_new_entry() -> Result<()> {
         let mut sl = SourcesList::empty();
-        
+
         sl.add(
             SourceType::Binary,
             "http://example.com/ubuntu".to_string(),
@@ -477,7 +481,7 @@ mod tests {
     #[test]
     fn test_add_duplicate_entry() -> Result<()> {
         let mut sl = SourcesList::empty();
-        
+
         sl.add(
             SourceType::Binary,
             "http://example.com/ubuntu".to_string(),
@@ -506,7 +510,7 @@ mod tests {
     #[test]
     fn test_add_component_to_existing() -> Result<()> {
         let mut sl = SourcesList::empty();
-        
+
         sl.add(
             SourceType::Binary,
             "http://example.com/ubuntu".to_string(),
@@ -536,7 +540,7 @@ mod tests {
     #[test]
     fn test_find_entries() -> Result<()> {
         let mut sl = SourcesList::empty();
-        
+
         sl.add(
             SourceType::Binary,
             "http://example.com/ubuntu".to_string(),
@@ -594,7 +598,7 @@ mod tests {
     #[test]
     fn test_remove_entry() -> Result<()> {
         let mut sl = SourcesList::empty();
-        
+
         sl.add(
             SourceType::Binary,
             "http://example.com/ubuntu".to_string(),
@@ -616,7 +620,7 @@ mod tests {
     #[test]
     fn test_set_enabled() -> Result<()> {
         let mut sl = SourcesList::empty();
-        
+
         sl.add(
             SourceType::Binary,
             "http://example.com/ubuntu".to_string(),

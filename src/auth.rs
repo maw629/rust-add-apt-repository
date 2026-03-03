@@ -1,5 +1,5 @@
 /// APT authentication handling for private repositories
-/// 
+///
 /// This module manages authentication credentials for private PPAs and repositories.
 /// Credentials are stored in /etc/apt/auth.conf.d/*.conf files in netrc format.
 use crate::config::AUTH_CONF_D_PATH;
@@ -41,18 +41,20 @@ impl AuthEntry {
     /// Parse from netrc-style line
     pub fn from_netrc_line(line: &str) -> Result<Self> {
         let parts: Vec<&str> = line.split_whitespace().collect();
-        
+
         // Expected format: machine <host> login <user> password <pass>
         if parts.len() != 6 {
-            return Err(AppError::InvalidInput(
-                format!("Invalid auth.conf line format: {}", line)
-            ));
+            return Err(AppError::InvalidInput(format!(
+                "Invalid auth.conf line format: {}",
+                line
+            )));
         }
 
         if parts[0] != "machine" || parts[2] != "login" || parts[4] != "password" {
-            return Err(AppError::InvalidInput(
-                format!("Invalid auth.conf keywords in line: {}", line)
-            ));
+            return Err(AppError::InvalidInput(format!(
+                "Invalid auth.conf keywords in line: {}",
+                line
+            )));
         }
 
         Ok(Self {
@@ -90,7 +92,10 @@ pub fn add_auth(owner: &str, ppa_name: &str, login: &str, password: &str) -> Res
     perms.set_mode(0o600);
     fs::set_permissions(&auth_file, perms)?;
 
-    println!("Saved authentication credentials to {}", auth_file.display());
+    println!(
+        "Saved authentication credentials to {}",
+        auth_file.display()
+    );
 
     Ok(auth_file)
 }
@@ -128,7 +133,9 @@ pub fn read_auth(owner: &str, ppa_name: &str) -> Result<Option<AuthEntry>> {
     }
 
     let content = fs::read_to_string(&auth_file)?;
-    let line = content.lines().next()
+    let line = content
+        .lines()
+        .next()
         .ok_or_else(|| AppError::InvalidInput("Empty auth.conf file".to_string()))?;
 
     Ok(Some(AuthEntry::from_netrc_line(line)?))
@@ -139,21 +146,22 @@ pub fn read_auth(owner: &str, ppa_name: &str) -> Result<Option<AuthEntry>> {
 pub fn parse_subscription_url(url: &str) -> Result<(String, String)> {
     // Parse URL to extract username and password
     let url_str = url.trim();
-    
+
     // Check for https://
     if !url_str.starts_with("https://") {
-        return Err(AppError::InvalidInput(
-            format!("Invalid subscription URL format: {}", url)
-        ));
+        return Err(AppError::InvalidInput(format!(
+            "Invalid subscription URL format: {}",
+            url
+        )));
     }
 
     // Extract credentials part
     // Format: https://user:pass@host/path
     let after_scheme = &url_str[8..]; // Skip "https://"
-    
+
     if let Some(at_pos) = after_scheme.find('@') {
         let credentials = &after_scheme[..at_pos];
-        
+
         if let Some(colon_pos) = credentials.find(':') {
             let username = credentials[..colon_pos].to_string();
             let password = credentials[colon_pos + 1..].to_string();
@@ -161,9 +169,10 @@ pub fn parse_subscription_url(url: &str) -> Result<(String, String)> {
         }
     }
 
-    Err(AppError::InvalidInput(
-        format!("No credentials found in subscription URL: {}", url)
-    ))
+    Err(AppError::InvalidInput(format!(
+        "No credentials found in subscription URL: {}",
+        url
+    )))
 }
 
 #[cfg(test)]

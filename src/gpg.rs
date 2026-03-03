@@ -45,7 +45,7 @@ impl KeyFingerprint {
 pub fn import_key(key_data: &str, keyring_path: &Path) -> Result<Vec<KeyFingerprint>> {
     // Create temporary file for the key
     let temp_file = std::env::temp_dir().join(format!("apt-key-{}.asc", std::process::id()));
-    
+
     let mut file = fs::File::create(&temp_file)?;
     file.write_all(key_data.as_bytes())?;
     drop(file);
@@ -84,17 +84,14 @@ pub fn import_key(key_data: &str, keyring_path: &Path) -> Result<Vec<KeyFingerpr
 pub fn import_key_from_url(url: &str, keyring_path: &Path) -> Result<Vec<KeyFingerprint>> {
     // Download the key
     let key_data = download_key(url)?;
-    
+
     // Import it
     import_key(&key_data, keyring_path)
 }
 
 /// Download a GPG key from a URL
 fn download_key(url: &str) -> Result<String> {
-    let output = Command::new("curl")
-        .arg("-fsSL")
-        .arg(url)
-        .output()?;
+    let output = Command::new("curl").arg("-fsSL").arg(url).output()?;
 
     if !output.status.success() {
         return Err(AppError::General(format!(
@@ -153,7 +150,7 @@ pub fn extract_fingerprints_from_keyring(keyring_path: &Path) -> Result<Vec<KeyF
 pub fn extract_fingerprints_from_key_data(key_data: &str) -> Result<Vec<KeyFingerprint>> {
     // Create temporary file
     let temp_file = std::env::temp_dir().join(format!("apt-key-{}.asc", std::process::id()));
-    
+
     let mut file = fs::File::create(&temp_file)?;
     file.write_all(key_data.as_bytes())?;
     drop(file);
@@ -207,7 +204,7 @@ pub fn remove_keyring(keyring_path: &Path) -> Result<()> {
 /// Generate a keyring filename from a repository name or identifier
 pub fn generate_keyring_filename(identifier: &str) -> String {
     let mut filename = identifier.to_string();
-    
+
     // Replace special characters with dashes
     filename = filename
         .chars()
@@ -219,12 +216,12 @@ pub fn generate_keyring_filename(identifier: &str) -> String {
             }
         })
         .collect();
-    
+
     // Limit length
     if filename.len() > 80 {
         filename.truncate(80);
     }
-    
+
     format!("{}.gpg", filename)
 }
 
@@ -251,7 +248,8 @@ mod tests {
 
     #[test]
     fn test_key_fingerprint_normalize() {
-        let fp = KeyFingerprint::new("f6ec b376 2474 eda9 d21b 7022 8719 20d1 991b c93c".to_string());
+        let fp =
+            KeyFingerprint::new("f6ec b376 2474 eda9 d21b 7022 8719 20d1 991b c93c".to_string());
         assert_eq!(fp.fingerprint, "F6ECB3762474EDA9D21B7022871920D1991BC93C");
     }
 
@@ -261,7 +259,7 @@ mod tests {
             generate_keyring_filename("example.com/ubuntu"),
             "example-com-ubuntu.gpg"
         );
-        
+
         assert_eq!(
             generate_keyring_filename("ppa:user/ppa-name"),
             "ppa-user-ppa-name.gpg"
@@ -285,7 +283,9 @@ mod tests {
             let fingerprints = result.unwrap();
             assert!(!fingerprints.is_empty());
             // Ubuntu 2018 key
-            assert!(fingerprints.iter().any(|fp| fp.fingerprint.ends_with("991BC93C")));
+            assert!(fingerprints
+                .iter()
+                .any(|fp| fp.fingerprint.ends_with("991BC93C")));
         }
     }
 }

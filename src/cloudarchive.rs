@@ -1,5 +1,5 @@
 /// Ubuntu Cloud Archive (UCA) support
-/// 
+///
 /// This module handles Cloud Archive shortcut parsing and repository creation.
 /// Cloud Archive provides newer OpenStack packages for Ubuntu LTS releases.
 use crate::error::{AppError, Result};
@@ -19,32 +19,32 @@ pub const CLOUD_KEYRING_PACKAGE: &str = "ubuntu-cloud-keyring";
 /// Maps OpenStack release names to their base Ubuntu versions
 fn get_openstack_releases() -> HashMap<&'static str, &'static str> {
     let mut releases = HashMap::new();
-    
+
     // Historical releases (LTS mapping)
-    releases.insert("icehouse", "trusty");  // 14.04
+    releases.insert("icehouse", "trusty"); // 14.04
     releases.insert("juno", "trusty");
     releases.insert("kilo", "trusty");
     releases.insert("liberty", "trusty");
-    releases.insert("mitaka", "xenial");    // 16.04
+    releases.insert("mitaka", "xenial"); // 16.04
     releases.insert("newton", "xenial");
     releases.insert("ocata", "xenial");
     releases.insert("pike", "xenial");
-    releases.insert("queens", "bionic");    // 18.04
+    releases.insert("queens", "bionic"); // 18.04
     releases.insert("rocky", "bionic");
     releases.insert("stein", "bionic");
     releases.insert("train", "bionic");
-    releases.insert("ussuri", "focal");     // 20.04
+    releases.insert("ussuri", "focal"); // 20.04
     releases.insert("victoria", "focal");
     releases.insert("wallaby", "focal");
     releases.insert("xena", "focal");
-    releases.insert("yoga", "jammy");       // 22.04
+    releases.insert("yoga", "jammy"); // 22.04
     releases.insert("zed", "jammy");
     releases.insert("antelope", "jammy");
     releases.insert("bobcat", "jammy");
-    releases.insert("caracal", "noble");    // 24.04
+    releases.insert("caracal", "noble"); // 24.04
     releases.insert("dalmatian", "noble");
     releases.insert("epoxy", "noble");
-    
+
     releases
 }
 
@@ -53,7 +53,7 @@ fn get_openstack_releases() -> HashMap<&'static str, &'static str> {
 /// Where pocket is "updates" or "proposed"
 pub fn parse_cloud_archive_shortcut(shortcut: &str) -> Result<(String, Option<String>)> {
     let shortcut = shortcut.trim();
-    
+
     // Remove "cloud-archive:" or "uca:" prefix if present
     let spec = if let Some(stripped) = shortcut.strip_prefix("cloud-archive:") {
         stripped
@@ -63,10 +63,10 @@ pub fn parse_cloud_archive_shortcut(shortcut: &str) -> Result<(String, Option<St
         // No prefix - assume it's just the release name (from -C flag)
         shortcut
     };
-    
+
     // Split by hyphen to separate release and pocket
     let parts: Vec<&str> = spec.split('-').collect();
-    
+
     let (release, pocket) = match parts.len() {
         1 => {
             // Just release name (defaults to updates)
@@ -76,23 +76,25 @@ pub fn parse_cloud_archive_shortcut(shortcut: &str) -> Result<(String, Option<St
             // Release and pocket
             let release = parts[0].to_string();
             let pocket = parts[1].to_string();
-            
+
             // Validate pocket
             if pocket != "updates" && pocket != "proposed" {
-                return Err(AppError::InvalidInput(
-                    format!("Invalid pocket: {}. Must be 'updates' or 'proposed'", pocket)
-                ));
+                return Err(AppError::InvalidInput(format!(
+                    "Invalid pocket: {}. Must be 'updates' or 'proposed'",
+                    pocket
+                )));
             }
-            
+
             (release, Some(pocket))
         }
         _ => {
-            return Err(AppError::InvalidInput(
-                format!("Invalid cloud archive format: {}. Too many parts", spec)
-            ));
+            return Err(AppError::InvalidInput(format!(
+                "Invalid cloud archive format: {}. Too many parts",
+                spec
+            )));
         }
     };
-    
+
     // Validate release name
     let releases = get_openstack_releases();
     if !releases.contains_key(release.as_str()) {
@@ -100,7 +102,7 @@ pub fn parse_cloud_archive_shortcut(shortcut: &str) -> Result<(String, Option<St
             format!("Unknown OpenStack release: {}. Valid releases include: yoga, zed, antelope, bobcat, caracal", release)
         ));
     }
-    
+
     Ok((release, pocket))
 }
 
@@ -109,7 +111,7 @@ pub fn parse_cloud_archive_shortcut(shortcut: &str) -> Result<(String, Option<St
 fn construct_suite(release: &str, pocket: Option<&str>) -> Result<String> {
     // Get current Ubuntu codename
     let codename = utils::get_distro_codename()?;
-    
+
     let suite = if let Some(p) = pocket {
         if p == "updates" {
             // For updates pocket, suite is just codename-release
@@ -121,7 +123,7 @@ fn construct_suite(release: &str, pocket: Option<&str>) -> Result<String> {
     } else {
         format!("{}-{}", codename, release)
     };
-    
+
     Ok(suite)
 }
 
@@ -131,7 +133,7 @@ pub fn check_cloud_keyring_installed() -> bool {
     let output = std::process::Command::new("dpkg-query")
         .args(["-W", "-f=${Status}", CLOUD_KEYRING_PACKAGE])
         .output();
-    
+
     if let Ok(output) = output {
         let status = String::from_utf8_lossy(&output.stdout);
         status.contains("install ok installed")
@@ -142,18 +144,22 @@ pub fn check_cloud_keyring_installed() -> bool {
 
 /// Install ubuntu-cloud-keyring package
 pub fn install_cloud_keyring() -> Result<()> {
-    println!("Installing {} package for GPG keys...", CLOUD_KEYRING_PACKAGE);
-    
+    println!(
+        "Installing {} package for GPG keys...",
+        CLOUD_KEYRING_PACKAGE
+    );
+
     let status = std::process::Command::new("apt-get")
         .args(["install", "-y", CLOUD_KEYRING_PACKAGE])
         .status()?;
-    
+
     if !status.success() {
-        return Err(AppError::General(
-            format!("Failed to install {}", CLOUD_KEYRING_PACKAGE)
-        ));
+        return Err(AppError::General(format!(
+            "Failed to install {}",
+            CLOUD_KEYRING_PACKAGE
+        )));
     }
-    
+
     println!("Successfully installed {}", CLOUD_KEYRING_PACKAGE);
     Ok(())
 }
@@ -166,44 +172,48 @@ pub fn create_cloud_archive_repository(
 ) -> Result<Repository> {
     // Parse cloud archive shortcut
     let (release, pocket) = parse_cloud_archive_shortcut(shortcut)?;
-    
+
     println!("Adding Ubuntu Cloud Archive repository...");
     println!("  OpenStack Release: {}", release);
     if let Some(ref p) = pocket {
         println!("  Pocket: {}", p);
     }
-    
+
     // Check if keyring is installed, prompt to install if not
     if !check_cloud_keyring_installed() {
-        println!("\nThe {} package is required for Cloud Archive.", CLOUD_KEYRING_PACKAGE);
+        println!(
+            "\nThe {} package is required for Cloud Archive.",
+            CLOUD_KEYRING_PACKAGE
+        );
         print!("Install it now? [Y/n] ");
-        
+
         use std::io::{self, Write};
         io::stdout().flush()?;
-        
+
         let mut response = String::new();
         io::stdin().read_line(&mut response)?;
-        
+
         let response = response.trim().to_lowercase();
         if response.is_empty() || response == "y" || response == "yes" {
             install_cloud_keyring()?;
         } else {
-            return Err(AppError::General(
-                format!("{} package is required. Aborting.", CLOUD_KEYRING_PACKAGE)
-            ));
+            return Err(AppError::General(format!(
+                "{} package is required. Aborting.",
+                CLOUD_KEYRING_PACKAGE
+            )));
         }
     }
-    
+
     // Construct suite name
     let suite = construct_suite(&release, pocket.as_deref())?;
-    
+
     // Use provided components or default to "main"
     let comps = if components.is_empty() {
         vec!["main".to_string()]
     } else {
         components.to_vec()
     };
-    
+
     // Create repository file
     let filename = format!("cloudarchive-{}", release);
     let file = PathBuf::from(format!(
@@ -211,11 +221,14 @@ pub fn create_cloud_archive_repository(
         crate::config::SOURCES_LIST_D_PATH,
         filename
     ));
-    
+
     let mut repo = Repository::new(file);
-    repo.description = Some(format!("Ubuntu Cloud Archive - OpenStack {}", release.to_uppercase()));
+    repo.description = Some(format!(
+        "Ubuntu Cloud Archive - OpenStack {}",
+        release.to_uppercase()
+    ));
     repo.enable_source = enable_source;
-    
+
     // Add binary entry
     let mut binary_entry = crate::sources::SourceEntry::new(
         SourceType::Binary,
@@ -225,7 +238,7 @@ pub fn create_cloud_archive_repository(
     );
     binary_entry.file = repo.file.clone();
     repo.entries.push(binary_entry);
-    
+
     // Add source entry if requested
     if enable_source {
         let mut source_entry = crate::sources::SourceEntry::new(
@@ -237,10 +250,10 @@ pub fn create_cloud_archive_repository(
         source_entry.file = repo.file.clone();
         repo.entries.push(source_entry);
     }
-    
+
     // Note: GPG keys come from ubuntu-cloud-keyring package, not individual files
     // So we don't set repo.key_data
-    
+
     Ok(repo)
 }
 
@@ -257,7 +270,8 @@ mod tests {
 
     #[test]
     fn test_parse_cloud_archive_with_pocket() {
-        let (release, pocket) = parse_cloud_archive_shortcut("cloud-archive:caracal-proposed").unwrap();
+        let (release, pocket) =
+            parse_cloud_archive_shortcut("cloud-archive:caracal-proposed").unwrap();
         assert_eq!(release, "caracal");
         assert_eq!(pocket, Some("proposed".to_string()));
     }

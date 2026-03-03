@@ -64,9 +64,8 @@ impl fmt::Display for Deb822Stanza {
 
         // Types field
         if !self.types.is_empty() {
-            let types_str: Vec<String> = self.types.iter()
-                .map(|t| t.as_str().to_string())
-                .collect();
+            let types_str: Vec<String> =
+                self.types.iter().map(|t| t.as_str().to_string()).collect();
             lines.push(format!("Types: {}", types_str.join(" ")));
         }
 
@@ -161,7 +160,7 @@ pub fn parse_deb822_file(content: &str, file_path: PathBuf) -> Result<Vec<Deb822
 
             current_field = line[..colon_pos].trim().to_string();
             let value = line[colon_pos + 1..].trim();
-            
+
             if value.is_empty() {
                 // Multi-line value starts on next line
                 current_value.clear();
@@ -195,19 +194,13 @@ fn process_field(stanza: &mut Deb822Stanza, field: &str, value: &str) -> Result<
             }
         }
         "uris" => {
-            stanza.uris = value.split_whitespace()
-                .map(|s| s.to_string())
-                .collect();
+            stanza.uris = value.split_whitespace().map(|s| s.to_string()).collect();
         }
         "suites" => {
-            stanza.suites = value.split_whitespace()
-                .map(|s| s.to_string())
-                .collect();
+            stanza.suites = value.split_whitespace().map(|s| s.to_string()).collect();
         }
         "components" => {
-            stanza.components = value.split_whitespace()
-                .map(|s| s.to_string())
-                .collect();
+            stanza.components = value.split_whitespace().map(|s| s.to_string()).collect();
         }
         "signed-by" => {
             stanza.signed_by = Some(value.to_string());
@@ -217,7 +210,9 @@ fn process_field(stanza: &mut Deb822Stanza, field: &str, value: &str) -> Result<
         }
         _ => {
             // Store other fields
-            stanza.other_fields.insert(field.to_string(), value.to_string());
+            stanza
+                .other_fields
+                .insert(field.to_string(), value.to_string());
         }
     }
     Ok(())
@@ -297,7 +292,7 @@ Components: main restricted
 ";
         let stanzas = parse_deb822_file(content, PathBuf::from("/test")).unwrap();
         assert_eq!(stanzas.len(), 1);
-        
+
         let stanza = &stanzas[0];
         assert_eq!(stanza.types, vec![SourceType::Binary]);
         assert_eq!(stanza.uris, vec!["http://archive.ubuntu.com/ubuntu/"]);
@@ -329,7 +324,10 @@ Components: main universe
 ";
         let stanzas = parse_deb822_file(content, PathBuf::from("/test")).unwrap();
         assert_eq!(stanzas[0].suites.len(), 3);
-        assert_eq!(stanzas[0].suites, vec!["noble", "noble-updates", "noble-backports"]);
+        assert_eq!(
+            stanzas[0].suites,
+            vec!["noble", "noble-updates", "noble-backports"]
+        );
     }
 
     #[test]
@@ -342,7 +340,10 @@ Components: main
 Signed-By: /usr/share/keyrings/example.gpg
 ";
         let stanzas = parse_deb822_file(content, PathBuf::from("/test")).unwrap();
-        assert_eq!(stanzas[0].signed_by, Some("/usr/share/keyrings/example.gpg".to_string()));
+        assert_eq!(
+            stanzas[0].signed_by,
+            Some("/usr/share/keyrings/example.gpg".to_string())
+        );
     }
 
     #[test]

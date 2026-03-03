@@ -36,9 +36,10 @@ pub fn log_repository_info(repo: &crate::repository::Repository) {
     eprintln!("[DEBUG]   Enable source: {}", repo.enable_source);
     eprintln!("[DEBUG]   Use DEB822: {}", repo.use_deb822);
     eprintln!("[DEBUG]   Entries: {}", repo.entries.len());
-    
+
     for (i, entry) in repo.entries.iter().enumerate() {
-        eprintln!("[DEBUG]     Entry {}: {} {} {} {}", 
+        eprintln!(
+            "[DEBUG]     Entry {}: {} {} {} {}",
             i + 1,
             entry.entry_type.as_str(),
             entry.uri,
@@ -46,7 +47,7 @@ pub fn log_repository_info(repo: &crate::repository::Repository) {
             entry.components.join(" ")
         );
     }
-    
+
     if repo.key_data.is_some() {
         eprintln!("[DEBUG]   Has GPG key data: yes");
     }
