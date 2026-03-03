@@ -106,6 +106,7 @@ pub fn validate_suite(suite: &str) -> Result<()> {
 }
 
 /// Check if two entries are equivalent (ignoring order of components)
+#[allow(clippy::too_many_arguments)]
 pub fn entries_match(
     type1: &crate::sources::SourceType,
     uri1: &str,

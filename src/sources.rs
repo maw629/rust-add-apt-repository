@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::str::FromStr;
 
 /// Represents a single APT source entry (one line in sources.list)
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,12 +35,16 @@ impl SourceType {
             SourceType::Source => "deb-src",
         }
     }
+}
 
-    pub fn from_str(s: &str) -> Option<Self> {
+impl FromStr for SourceType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "deb" => Some(SourceType::Binary),
-            "deb-src" => Some(SourceType::Source),
-            _ => None,
+            "deb" => Ok(SourceType::Binary),
+            "deb-src" => Ok(SourceType::Source),
+            _ => Err(()),
         }
     }
 }
@@ -87,7 +92,7 @@ impl SourceEntry {
             return None;
         }
 
-        let entry_type = SourceType::from_str(parts[0])?;
+        let entry_type = SourceType::from_str(parts[0]).ok()?;
         let uri = parts[1].to_string();
         let dist = parts[2].to_string();
         let components: Vec<String> = parts[3..].iter().map(|s| s.to_string()).collect();

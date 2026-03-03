@@ -2,7 +2,6 @@
 /// 
 /// This module handles Cloud Archive shortcut parsing and repository creation.
 /// Cloud Archive provides newer OpenStack packages for Ubuntu LTS releases.
-
 use crate::error::{AppError, Result};
 use crate::repository::Repository;
 use crate::sources::SourceType;

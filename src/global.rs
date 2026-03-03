@@ -438,7 +438,7 @@ mod tests {
 
     #[test]
     fn test_component_filtering() {
-        let components = vec!["main".to_string(), "universe".to_string(), "restricted".to_string()];
+        let components = ["main".to_string(), "universe".to_string(), "restricted".to_string()];
         let filtered: Vec<String> = components.iter()
             .filter(|c| *c != "universe")
             .cloned()

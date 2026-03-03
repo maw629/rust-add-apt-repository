@@ -127,8 +127,8 @@ pub fn parse_sourceslist_line(line: &str) -> Result<Repository> {
     }
 
     let entry_type_str = parts[0];
-    let entry_type = SourceType::from_str(entry_type_str)
-        .ok_or_else(|| AppError::InvalidInput(
+    let entry_type = entry_type_str.parse::<SourceType>()
+        .map_err(|_| AppError::InvalidInput(
             format!("Invalid entry type: {}. Must be 'deb' or 'deb-src'", entry_type_str)
         ))?;
 

@@ -2,7 +2,6 @@
 /// 
 /// This module manages authentication credentials for private PPAs and repositories.
 /// Credentials are stored in /etc/apt/auth.conf.d/*.conf files in netrc format.
-
 use crate::config::AUTH_CONF_D_PATH;
 use crate::error::{AppError, Result};
 use std::fs;

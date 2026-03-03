@@ -3,6 +3,7 @@
 use crate::error::Result;
 use crate::sources::SourceType;
 use std::collections::HashMap;
+use std::fmt;
 use std::path::PathBuf;
 
 /// Represents a DEB822 format source entry (stanza)
@@ -50,9 +51,10 @@ impl Deb822Stanza {
     pub fn has_source(&self) -> bool {
         self.types.contains(&SourceType::Source)
     }
+}
 
-    /// Convert to string representation (DEB822 format)
-    pub fn to_string(&self) -> String {
+impl fmt::Display for Deb822Stanza {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut lines = Vec::new();
 
         // Enabled field (if disabled)
@@ -102,7 +104,7 @@ impl Deb822Stanza {
             lines.push(format!("{}: {}", key, value));
         }
 
-        lines.join("\n")
+        write!(f, "{}", lines.join("\n"))
     }
 }
 
@@ -187,7 +189,7 @@ fn process_field(stanza: &mut Deb822Stanza, field: &str, value: &str) -> Result<
     match field.to_lowercase().as_str() {
         "types" => {
             for type_str in value.split_whitespace() {
-                if let Some(source_type) = SourceType::from_str(type_str) {
+                if let Ok(source_type) = type_str.parse::<SourceType>() {
                     stanza.types.push(source_type);
                 }
             }
