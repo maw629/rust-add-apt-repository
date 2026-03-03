@@ -1,5 +1,41 @@
 # Release Notes - rust-add-apt-repository
 
+## v0.2.1 - Release Workflow Fix
+
+**Release Date**: March 3, 2026
+
+This patch release fixes the GitHub release workflow for easier operation. All features from v0.2.0 remain unchanged.
+
+### 🔧 Workflow Improvements
+
+#### Release Workflow Fixes
+- **Simplified workflow trigger**: Use GitHub's tag selector UI instead of manual tag input
+  - Select tag directly from "Use workflow from" dropdown
+  - Eliminates need to type tag name twice
+  - Reduces user error
+
+- **Removed CI verification step**: 
+  - CI already runs automatically when tag is pushed
+  - Removed redundant and failing CI status check
+  - Workflow now starts immediately
+
+- **Added safety check**: Prevents releasing from branches
+  - Validates that selected ref is actually a tag
+  - Fails fast with clear error message if branch selected
+  - Provides step-by-step instructions for correct usage
+
+### 📊 Changes
+
+- **Files Modified**: 2 files
+  - `.github/workflows/release.yml` - Simplified workflow
+  - `.github/copilot-instructions.md` - Updated release instructions
+
+### 🎯 Impact
+
+This release only improves the release automation process. All code features, bug fixes, and functionality from v0.2.0 remain unchanged.
+
+---
+
 ## v0.2.0 - Bug Fixes, CI/CD, and Documentation Improvements
 
 **Release Date**: March 3, 2026
