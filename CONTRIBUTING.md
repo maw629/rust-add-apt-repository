@@ -2,6 +2,10 @@
 
 Thank you for your interest in contributing to rust-add-apt-repository! This document provides guidelines and instructions for contributing to the project.
 
+## Code of Conduct
+
+This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to maw629@gmail.com.
+
 ## Development Workflow - Trunk-Based Development
 
 This project uses **Trunk-Based Development (TBD)**, a modern development workflow where all work flows through the `trunk` branch. This keeps the workflow simple and enables continuous integration.

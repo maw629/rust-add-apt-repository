@@ -357,6 +357,8 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for complete guidelines including:
 - Maintain behavioral compatibility with Python version
 - Keep changes focused and well-tested
 
+**Code of Conduct**: This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+
 ## License
 
 This project is licensed under the GNU General Public License v2.0 or later (GPL-2.0-or-later).
