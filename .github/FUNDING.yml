@@ -1,37 +1,7 @@
 # Funding options for rust-add-apt-repository
 # 
 # This file enables the "Sponsor" button in the GitHub repository.
-# Uncomment and fill in the platforms you want to use.
-#
 # Documentation: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
 
-# GitHub Sponsors (recommended for GitHub projects)
-# github: maw629  # Uncomment when you set up GitHub Sponsors
-
-# Ko-fi (popular, easy setup, no fees)
-# ko_fi: USERNAME
-
-# Buy Me a Coffee (similar to Ko-fi)
-# buy_me_a_coffee: USERNAME
-
-# Patreon (for recurring support)
-# patreon: USERNAME
-
-# Open Collective (transparent community funding)
-# open_collective: USERNAME
-
-# Liberapay (European alternative, no fees)
-# liberapay: USERNAME
-
-# Polar (modern sponsorship platform for developers)
-# polar: USERNAME
-
-# PayPal or custom links (up to 4 URLs)
-# custom: ["https://www.paypal.me/USERNAME"]
-# custom: ["https://your-donation-page.com"]
-
-# Note: You can enable multiple platforms at once
-# Example:
-# github: maw629
-# ko_fi: maw629
-# custom: ["https://www.paypal.me/maw629"]
+# Buy Me a Coffee - Support the maintainer
+buy_me_a_coffee: maw629
