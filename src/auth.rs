@@ -184,7 +184,7 @@ mod tests {
         let entry = AuthEntry::new(
             "ppa.launchpadcontent.net/user/ppa".to_string(),
             "username".to_string(),
-            // lgtm[rust/hardcoded-credentials]
+            // lgtm[rust/hard-coded-cryptographic-value]
             "token123".to_string(),
         );
 
@@ -210,7 +210,7 @@ mod tests {
         let original = AuthEntry::new(
             "example.com/path".to_string(),
             "user".to_string(),
-            // lgtm[rust/hardcoded-credentials]
+            // lgtm[rust/hard-coded-cryptographic-value]
             "pass".to_string(),
         );
 
@@ -222,7 +222,7 @@ mod tests {
 
     #[test]
     fn test_parse_subscription_url() {
-        // lgtm[rust/hardcoded-credentials]
+        // lgtm[rust/hard-coded-cryptographic-value]
         let url = "https://user123:tokenABC@private-ppa.launchpadcontent.net/team/ppa/ubuntu";
         let (username, password) = parse_subscription_url(url).unwrap();
 
