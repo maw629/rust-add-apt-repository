@@ -67,155 +67,278 @@ jobs:
           rust-add-apt-repository --version
           rust-add-apt-repository --help
 
-      # Test 1: Count initial repositories
-      - name: Test 1 - Count initial repositories
+      # Test 1: Record initial state (always succeeds, for baseline)
+      - name: Test 1 - Record initial state
         run: |
-          echo "=== Initial APT Sources ==="
+          echo "=== Recording Initial APT State ==="
           INITIAL_COUNT=$(find /etc/apt/sources.list.d/ -name "*.list" -type f | wc -l)
           echo "Initial .list files: $INITIAL_COUNT"
-          ls -la /etc/apt/sources.list.d/ || true
           echo "INITIAL_COUNT=$INITIAL_COUNT" >> $GITHUB_ENV
-
-      # Test 2: Enable universe repository (should already exist, but ensure it's active)
-      - name: Test 2 - Enable universe repository
-        run: |
-          echo "=== Enabling universe repository ==="
-          # Check if universe is already enabled
-          if grep -r "^deb.*universe" /etc/apt/sources.list /etc/apt/sources.list.d/; then
-            echo "Universe already enabled"
-          else
-            echo "Enabling universe..."
-            sudo add-apt-repository universe -y
-          fi
-          sudo apt-get update
-
-      # Test 3: List repositories using our tool
-      - name: Test 3 - List repositories
-        run: |
-          echo "=== Listing repositories with rust-add-apt-repository ==="
-          sudo rust-add-apt-repository --list | head -20
-
-      # Test 4: Add a well-known, safe PPA (Git Stable PPA)
-      - name: Test 4 - Add Git Stable PPA
-        run: |
-          echo "=== Adding ppa:git-core/ppa ==="
-          # This is a well-known, maintained PPA for latest Git
-          sudo rust-add-apt-repository ppa:git-core/ppa -y
           
-          # Verify the PPA was added
-          if [ -f /etc/apt/sources.list.d/git-core-ubuntu-ppa-*.list ]; then
-            echo "✅ PPA file created"
-            cat /etc/apt/sources.list.d/git-core-ubuntu-ppa-*.list
+          # Record if Git PPA already exists (for idempotency)
+          if ls /etc/apt/sources.list.d/git-core-ubuntu-ppa-*.list 2>/dev/null; then
+            echo "GIT_PPA_PRE_EXISTS=true" >> $GITHUB_ENV
+            echo "⚠️ Git PPA already exists (workflow not starting clean)"
           else
-            echo "❌ PPA file not found"
+            echo "GIT_PPA_PRE_EXISTS=false" >> $GITHUB_ENV
+            echo "✅ Git PPA not present (clean state)"
+          fi
+
+      # Test 2: Verify --list functionality
+      # SUCCESS: Command exits 0 and outputs repository lines
+      - name: Test 2 - List repositories
+        run: |
+          echo "=== Test: List repositories ==="
+          OUTPUT=$(sudo rust-add-apt-repository --list 2>&1)
+          EXIT_CODE=$?
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ FAIL: --list command failed with exit code $EXIT_CODE"
+            echo "$OUTPUT"
             exit 1
           fi
+          
+          # Should output at least one repository line
+          LINE_COUNT=$(echo "$OUTPUT" | wc -l)
+          if [ $LINE_COUNT -lt 1 ]; then
+            echo "❌ FAIL: --list produced no output"
+            exit 1
+          fi
+          
+          echo "✅ PASS: Listed $LINE_COUNT repository lines"
+          echo "$OUTPUT" | head -10
+
+      # Test 3: Test dry-run mode (should NOT modify system)
+      # SUCCESS: Exit 0, file NOT created, no state changes
+      - name: Test 3 - Dry-run mode
+        run: |
+          echo "=== Test: Dry-run mode ==="
+          
+          # Run dry-run add
+          rust-add-apt-repository ppa:deadsnakes/ppa --dry-run
+          EXIT_CODE=$?
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ FAIL: Dry-run command failed (exit $EXIT_CODE)"
+            exit 1
+          fi
+          
+          # Verify file was NOT created
+          if ls /etc/apt/sources.list.d/deadsnakes-ubuntu-ppa-*.list 2>/dev/null; then
+            echo "❌ FAIL: Dry-run created repository file (should not happen)"
+            exit 1
+          fi
+          
+          echo "✅ PASS: Dry-run did not modify system"
+
+      # Test 4: Add PPA (idempotent - skip if already exists)
+      # SUCCESS: File exists after operation, exit code 0 or already-exists
+      - name: Test 4 - Add Git PPA
+        id: add_ppa
+        run: |
+          echo "=== Test: Add ppa:git-core/ppa ==="
+          
+          # Skip if already exists (idempotency)
+          if [ "$GIT_PPA_PRE_EXISTS" = "true" ]; then
+            echo "⏭️ SKIP: Git PPA already exists, skipping add test"
+            echo "PPA_ADDED=false" >> $GITHUB_ENV
+            exit 0
+          fi
+          
+          # Add the PPA
+          sudo rust-add-apt-repository ppa:git-core/ppa -y
+          EXIT_CODE=$?
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ FAIL: Add PPA failed with exit code $EXIT_CODE"
+            exit 1
+          fi
+          
+          # Verify file was created
+          PPA_FILE=$(ls /etc/apt/sources.list.d/git-core-ubuntu-ppa-*.list 2>/dev/null | head -1)
+          if [ -z "$PPA_FILE" ]; then
+            echo "❌ FAIL: PPA file not created"
+            exit 1
+          fi
+          
+          # Verify file contains expected content
+          if ! grep -q "git-core/ppa" "$PPA_FILE"; then
+            echo "❌ FAIL: PPA file doesn't contain expected repository"
+            cat "$PPA_FILE"
+            exit 1
+          fi
+          
+          echo "✅ PASS: PPA added successfully"
+          echo "File: $PPA_FILE"
+          cat "$PPA_FILE"
+          echo "PPA_ADDED=true" >> $GITHUB_ENV
           
           # Update package lists
-          sudo apt-get update
+          sudo apt-get update -qq
 
-      # Test 5: Count repositories after adding PPA
-      - name: Test 5 - Verify repository count increased
+      # Test 5: Verify repository count increased
+      # SUCCESS: Count increased by exactly 1
+      - name: Test 5 - Verify count increased
         run: |
-          echo "=== Counting repositories after PPA addition ==="
+          echo "=== Test: Repository count ==="
+          
+          if [ "$PPA_ADDED" != "true" ]; then
+            echo "⏭️ SKIP: PPA was not added, skipping count verification"
+            exit 0
+          fi
+          
           AFTER_COUNT=$(find /etc/apt/sources.list.d/ -name "*.list" -type f | wc -l)
-          echo "After adding PPA: $AFTER_COUNT .list files"
+          EXPECTED_COUNT=$((INITIAL_COUNT + 1))
+          
           echo "Initial count: $INITIAL_COUNT"
+          echo "Current count: $AFTER_COUNT"
+          echo "Expected count: $EXPECTED_COUNT"
           
-          if [ "$AFTER_COUNT" -gt "$INITIAL_COUNT" ]; then
-            echo "✅ Repository count increased from $INITIAL_COUNT to $AFTER_COUNT"
+          if [ "$AFTER_COUNT" -eq "$EXPECTED_COUNT" ]; then
+            echo "✅ PASS: Count increased by 1 as expected"
           else
-            echo "⚠️ Repository count did not increase (might already exist)"
-          fi
-          
-          ls -la /etc/apt/sources.list.d/
-
-      # Test 6: Verify package from new PPA is available
-      - name: Test 6 - Check Git version availability
-        run: |
-          echo "=== Checking if Git from PPA is available ==="
-          apt-cache policy git | head -20
-          
-          # Check if PPA version is available
-          if apt-cache policy git | grep -q "git-core/ppa"; then
-            echo "✅ Git from git-core/ppa is available"
-          else
-            echo "ℹ️ Git PPA packages available (may not show in policy if same version)"
-          fi
-
-      # Test 7: Add a custom repository (Ubuntu Cloud Archive - safe test repo)
-      - name: Test 7 - Add Ubuntu Cloud Archive
-        run: |
-          echo "=== Adding Ubuntu Cloud Archive ==="
-          CODENAME=$(lsb_release -cs)
-          sudo rust-add-apt-repository cloud-archive:caracal -y || echo "Cloud archive might not be available on $CODENAME"
-          sudo apt-get update || true
-
-      # Test 8: Test dry-run mode
-      - name: Test 8 - Dry-run mode
-        run: |
-          echo "=== Testing dry-run mode ==="
-          # Should not actually add repository
-          rust-add-apt-repository ppa:deadsnakes/ppa --dry-run
-          
-          # Verify it wasn't actually added
-          if [ -f /etc/apt/sources.list.d/deadsnakes-ubuntu-ppa-*.list ]; then
-            echo "❌ Dry-run added repository (should not happen)"
+            echo "❌ FAIL: Expected $EXPECTED_COUNT files, found $AFTER_COUNT"
             exit 1
-          else
-            echo "✅ Dry-run did not add repository"
           fi
 
-      # Test 9: Remove the Git PPA
-      - name: Test 9 - Remove repository
+      # Test 6: Verify GPG key was imported
+      # SUCCESS: Key file exists in /etc/apt/trusted.gpg.d/
+      - name: Test 6 - Verify GPG key imported
         run: |
-          echo "=== Removing ppa:git-core/ppa ==="
-          sudo rust-add-apt-repository --remove ppa:git-core/ppa -y
+          echo "=== Test: GPG key import ==="
           
-          # Verify removal
-          if [ -f /etc/apt/sources.list.d/git-core-ubuntu-ppa-*.list ]; then
-            echo "❌ PPA file still exists after removal"
+          if [ "$PPA_ADDED" != "true" ]; then
+            echo "⏭️ SKIP: PPA was not added, skipping key verification"
+            exit 0
+          fi
+          
+          # Check for Git PPA signing key
+          KEY_FILE=$(ls /etc/apt/trusted.gpg.d/git-core-ubuntu-ppa-*.gpg 2>/dev/null | head -1)
+          
+          if [ -z "$KEY_FILE" ]; then
+            echo "❌ FAIL: GPG key file not found"
+            ls -la /etc/apt/trusted.gpg.d/ || true
             exit 1
-          else
-            echo "✅ PPA removed successfully"
           fi
           
-          sudo apt-get update
+          echo "✅ PASS: GPG key imported at $KEY_FILE"
 
-      # Test 10: Verify final repository count
-      - name: Test 10 - Final repository count
+      # Test 7: Verify package from PPA is available
+      # SUCCESS: apt-cache policy mentions the PPA
+      - name: Test 7 - Verify PPA packages available
         run: |
-          echo "=== Final repository count ==="
-          FINAL_COUNT=$(find /etc/apt/sources.list.d/ -name "*.list" -type f | wc -l)
-          echo "Final .list files: $FINAL_COUNT"
-          ls -la /etc/apt/sources.list.d/
+          echo "=== Test: Package availability ==="
+          
+          if [ "$PPA_ADDED" != "true" ]; then
+            echo "⏭️ SKIP: PPA was not added, skipping package check"
+            exit 0
+          fi
+          
+          # Check apt-cache policy for git
+          POLICY_OUTPUT=$(apt-cache policy git 2>&1)
+          
+          if echo "$POLICY_OUTPUT" | grep -q "git-core/ppa"; then
+            echo "✅ PASS: Packages from git-core/ppa are available"
+          else
+            echo "❌ FAIL: git-core/ppa not found in apt-cache policy"
+            echo "$POLICY_OUTPUT"
+            exit 1
+          fi
 
-      # Test 11: Test error handling (invalid PPA)
-      - name: Test 11 - Error handling
-        continue-on-error: true
+      # Test 8: Test error handling with invalid PPA
+      # SUCCESS: Command fails gracefully with exit code 1
+      - name: Test 8 - Error handling
         run: |
-          echo "=== Testing error handling with invalid PPA ==="
-          # This should fail gracefully
-          sudo rust-add-apt-repository ppa:nonexistent/invalid-ppa -y && exit 1 || echo "✅ Failed gracefully as expected"
+          echo "=== Test: Error handling ==="
+          
+          # This should fail
+          sudo rust-add-apt-repository ppa:nonexistent/invalid-ppa-12345 -y 2>&1
+          EXIT_CODE=$?
+          
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "❌ FAIL: Invalid PPA succeeded (should have failed)"
+            exit 1
+          fi
+          
+          # Verify no file was created
+          if ls /etc/apt/sources.list.d/nonexistent-ubuntu-invalid-ppa-*.list 2>/dev/null; then
+            echo "❌ FAIL: File created for invalid PPA"
+            exit 1
+          fi
+          
+          echo "✅ PASS: Invalid PPA failed gracefully (exit $EXIT_CODE)"
 
-      # Test 12: Test --list with components filtering
-      - name: Test 12 - List with grep
-        run: |
-          echo "=== Testing list functionality ==="
-          sudo rust-add-apt-repository --list | grep -i "ubuntu" | head -5 || true
-
-      # Cleanup summary
-      - name: Summary
+      # Cleanup: Remove Git PPA (runs even if tests fail)
+      - name: Cleanup - Remove Git PPA
         if: always()
         run: |
-          echo "=== E2E Test Summary ==="
-          echo "Ubuntu version: $(lsb_release -ds)"
+          echo "=== Cleanup: Removing Git PPA ==="
+          
+          # Check if PPA exists
+          if ! ls /etc/apt/sources.list.d/git-core-ubuntu-ppa-*.list 2>/dev/null; then
+            echo "ℹ️ Git PPA not present, nothing to clean"
+            exit 0
+          fi
+          
+          # Remove it
+          sudo rust-add-apt-repository --remove ppa:git-core/ppa -y || {
+            echo "⚠️ WARNING: Failed to remove PPA via tool, manual cleanup"
+            sudo rm -f /etc/apt/sources.list.d/git-core-ubuntu-ppa-*.list
+            sudo rm -f /etc/apt/trusted.gpg.d/git-core-ubuntu-ppa-*.gpg
+          }
+          
+          # Verify removal
+          if ls /etc/apt/sources.list.d/git-core-ubuntu-ppa-*.list 2>/dev/null; then
+            echo "⚠️ WARNING: PPA file still exists after cleanup"
+          else
+            echo "✅ Cleanup successful"
+          fi
+          
+          sudo apt-get update -qq || true
+
+      # Test 9: Verify cleanup worked
+      # SUCCESS: Count equals initial count, no Git PPA files
+      - name: Test 9 - Verify cleanup
+        run: |
+          echo "=== Test: Verify cleanup ==="
+          
+          FINAL_COUNT=$(find /etc/apt/sources.list.d/ -name "*.list" -type f | wc -l)
+          
+          echo "Initial count: $INITIAL_COUNT"
+          echo "Final count: $FINAL_COUNT"
+          
+          if [ "$FINAL_COUNT" -ne "$INITIAL_COUNT" ]; then
+            echo "⚠️ WARNING: Final count ($FINAL_COUNT) != Initial count ($INITIAL_COUNT)"
+            echo "State was not fully restored (may be expected if other tests added repos)"
+          else
+            echo "✅ PASS: Repository count restored to initial state"
+          fi
+          
+          # Verify Git PPA specifically is gone
+          if ls /etc/apt/sources.list.d/git-core-ubuntu-ppa-*.list 2>/dev/null; then
+            echo "❌ FAIL: Git PPA file still exists"
+            exit 1
+          fi
+          
+          echo "✅ PASS: Git PPA removed successfully"
+
+      # Summary
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "========================================="
+          echo "        E2E Test Suite Summary"
+          echo "========================================="
+          echo "Ubuntu: $(lsb_release -ds)"
           echo "Kernel: $(uname -r)"
+          echo "Tool: $(rust-add-apt-repository --version)"
+          echo ""
           echo "Initial repo count: $INITIAL_COUNT"
-          CURRENT_COUNT=$(find /etc/apt/sources.list.d/ -name "*.list" -type f | wc -l)
-          echo "Current repo count: $CURRENT_COUNT"
+          FINAL_COUNT=$(find /etc/apt/sources.list.d/ -name "*.list" -type f | wc -l)
+          echo "Final repo count: $FINAL_COUNT"
           echo ""
-          echo "rust-add-apt-repository version:"
-          rust-add-apt-repository --version
-          echo ""
-          echo "Tests completed!"
+          if [ "$FINAL_COUNT" -eq "$INITIAL_COUNT" ]; then
+            echo "✅ System state restored (idempotent)"
+          else
+            echo "⚠️ System state changed (non-idempotent)"
+          fi
