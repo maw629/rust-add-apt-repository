@@ -2,7 +2,7 @@
 
 A Rust implementation of Debian/Ubuntu's `add-apt-repository` command, designed for behavioral compatibility with the Python version from `software-properties-common` while being installable alongside it.
 
-**Project Status:** Version 0.2.0 - 100% complete (all 13 phases implemented), 95/95 tests passing, production ready. CI/CD automated with GitHub Actions.
+**Project Status:** Version 0.2.0 - 100% complete (all 13 phases implemented), 105/105 tests passing, production ready. CI/CD automated with GitHub Actions.
 
 **Development Workflow:** This project uses **Trunk-Based Development** (TBD) with `trunk` as the default branch. All changes flow through Pull Requests to `trunk`. CI runs automatically on all PRs. See [CONTRIBUTING.md](../CONTRIBUTING.md) for complete workflow guidelines.
 
@@ -13,7 +13,7 @@ A Rust implementation of Debian/Ubuntu's `add-apt-repository` command, designed 
 **Continuous Integration (.github/workflows/ci.yml):**
 - Runs on all pushes, PRs, and version tags
 - Pinned to Rust 1.93.0 for consistency
-- Executes all 95 tests (74 unit + 21 integration)
+- Executes all 105 tests (74 unit + 31 integration)
 - Enforces code formatting (`cargo fmt --check`)
 - Runs clippy linter (`cargo clippy -- -D warnings`)
 - Ensures code quality before merging
@@ -75,9 +75,9 @@ Binary outputs:
 
 ### Testing
 
-**Automated Tests (95 tests, no root required):**
+**Automated Tests (105 tests, no root required):**
 ```bash
-# Run all tests (74 unit + 21 integration)
+# Run all tests (74 unit + 31 integration)
 cargo test
 
 # Run specific test suites
@@ -312,7 +312,7 @@ This project follows **Trunk-Based Development** workflow:
 - Commit messages should be descriptive with conventional commits format (`feat:`, `fix:`, `chore:`, `docs:`)
 
 **Pull Request requirements:**
-- All 95 tests must pass (`cargo test`)
+- All 105 tests must pass (`cargo test`)
 - Code must pass clippy lints (`cargo clippy`)
 - Changes must maintain Python behavioral compatibility
 - Documentation updates for user-facing changes

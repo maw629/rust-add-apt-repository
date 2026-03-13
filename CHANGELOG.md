@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- GPG key handling flags for custom repositories:
+  - `--key <URL>`: Download GPG key from URL and import to system keyring
+  - `--keyring <FILE>`: Import GPG key from local file
+  - `--key-id <ID>`: Fetch GPG key from Ubuntu keyserver by key ID (8, 16, or 40 hex characters)
+- Comprehensive validation for key flags:
+  - Key flags only work with `--uri` (prevented for PPA and Cloud Archive)
+  - Keyring file existence check
+  - Key ID format validation (hexadecimal, correct length)
+  - Mutual exclusivity (only one key method allowed)
+- 9 new integration tests for key flag functionality and validation
+
+### Changed
+- Enhanced GPG key import logic to support all three key input methods
+- Test count: 95 → 105 passing tests (74 unit + 31 integration)
+
+### Documentation
+- Updated README.md with key flag examples and workflows
+- Updated Quick Reference table with key flag commands
+- Test badge updated to reflect 105 passing tests
+
+### Notes
+- This feature goes beyond Python version compatibility
+- The Python `add-apt-repository` also lacks this capability
+- Reuses 90% of existing GPG infrastructure from prior phases
+
 ## [0.2.1] - 2026-03-04
 
 ### Changed
