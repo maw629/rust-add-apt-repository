@@ -1,0 +1,455 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [trunk]
+  pull_request:
+    branches: [trunk]
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  e2e-test:
+    name: End-to-End Tests on ${{ matrix.ubuntu }}
+    runs-on: ${{ matrix.ubuntu }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: [ubuntu-22.04, ubuntu-24.04]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install Rust 1.93.0
+        uses: dtolnay/rust-toolchain@1.93.0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential debhelper devscripts pkg-config \
+            libapt-pkg-dev libgpgme-dev libgpg-error-dev libssl-dev
+
+      - name: Build Debian package
+        run: |
+          echo "=== Building .deb package with debuild ==="
+          # Use -d flag to skip build dependency checks since Rust is installed via rustup, not apt
+          # debuild runs: cargo clean, cargo build --release, cargo test, and packages
+          debuild -d -us -uc -b
+          
+          echo "=== Package built ==="
+          ls -lh ../*.deb
+          
+          # Move package to current directory for easier access
+          mv ../*.deb ./rust-add-apt-repository.deb
+          ls -lh rust-add-apt-repository.deb
+
+      - name: Install Debian package
+        run: |
+          echo "=== Installing rust-add-apt-repository from .deb ==="
+          sudo dpkg -i rust-add-apt-repository.deb
+          
+          echo "=== Verifying installation via dpkg ==="
+          dpkg -l | grep rust-add-apt-repository
+          echo ""
+          echo "=== Installed files ==="
+          dpkg -L rust-add-apt-repository
+
+      - name: Verify installation
+        run: |
+          echo "=== Verifying installed binary ==="
+          which rust-add-apt-repository
+          rust-add-apt-repository --version
+          rust-add-apt-repository --help
+
+      # Test 1: Record initial state (always succeeds, for baseline)
+      - name: Test 1 - Record initial state
+        run: |
+          echo "=== Recording Initial APT State ==="
+          INITIAL_COUNT=$(find /etc/apt/sources.list.d/ -name "*.list" -type f | wc -l)
+          echo "Initial .list files: $INITIAL_COUNT"
+          echo "INITIAL_COUNT=$INITIAL_COUNT" >> $GITHUB_ENV
+          
+          # Check if gh is already installed (should NOT be)
+          if command -v gh &> /dev/null; then
+            echo "⚠️ WARNING: gh already installed (unexpected)"
+            echo "GH_PRE_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "✅ gh not installed (expected clean state)"
+            echo "GH_PRE_EXISTS=false" >> $GITHUB_ENV
+          fi
+          
+          # Record if GitHub CLI repo already exists (for idempotency)
+          # Note: Tool generates filename from URI: cli_github_com_packages.list
+          if [ -f /etc/apt/sources.list.d/cli_github_com_packages.list ]; then
+            echo "GH_REPO_PRE_EXISTS=true" >> $GITHUB_ENV
+            echo "⚠️ GitHub CLI repo already exists (workflow not starting clean)"
+          else
+            echo "GH_REPO_PRE_EXISTS=false" >> $GITHUB_ENV
+            echo "✅ GitHub CLI repo not present (clean state)"
+          fi
+
+      # Test 2: Verify --list functionality
+      # SUCCESS: Command exits 0 and outputs repository lines
+      - name: Test 2 - List repositories
+        run: |
+          echo "=== Test: List repositories ==="
+          OUTPUT=$(sudo rust-add-apt-repository --list 2>&1)
+          EXIT_CODE=$?
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ FAIL: --list command failed with exit code $EXIT_CODE"
+            echo "$OUTPUT"
+            exit 1
+          fi
+          
+          # Should output at least one repository line
+          LINE_COUNT=$(echo "$OUTPUT" | wc -l)
+          if [ $LINE_COUNT -lt 1 ]; then
+            echo "❌ FAIL: --list produced no output"
+            exit 1
+          fi
+          
+          echo "✅ PASS: Listed $LINE_COUNT repository lines"
+          echo "$OUTPUT" | head -10
+
+      # Test 3: Test dry-run mode (should NOT modify system)
+      # SUCCESS: Exit 0, file NOT created, no state changes
+      - name: Test 3 - Dry-run mode
+        run: |
+          echo "=== Test: Dry-run mode ==="
+          
+          # Run dry-run add (still needs sudo to avoid permission check, but won't modify system)
+          sudo rust-add-apt-repository --dry-run ppa:deadsnakes/ppa
+          EXIT_CODE=$?
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ FAIL: Dry-run command failed (exit $EXIT_CODE)"
+            exit 1
+          fi
+          
+          # Verify file was NOT created
+          if ls /etc/apt/sources.list.d/deadsnakes-ubuntu-ppa-*.list 2>/dev/null; then
+            echo "❌ FAIL: Dry-run created repository file (should not happen)"
+            exit 1
+          fi
+          
+          echo "✅ PASS: Dry-run did not modify system"
+
+      # Test 4: Add GitHub CLI repository (idempotent - skip if already exists)
+      # SUCCESS: File exists after operation, exit code 0
+      - name: Test 4 - Add GitHub CLI repository
+        id: add_repo
+        run: |
+          echo "=== Test: Add GitHub CLI repository ==="
+          
+          # Skip if already exists (idempotency)
+          if [ "$GH_REPO_PRE_EXISTS" = "true" ]; then
+            echo "⏭️ SKIP: GitHub CLI repo already exists, skipping add test"
+            echo "REPO_ADDED=false" >> $GITHUB_ENV
+            exit 0
+          fi
+          
+          # Import GitHub CLI GPG key (required before adding repo)
+          # Note: rust-add-apt-repository doesn't support --key flag for custom URIs yet
+          # We use /etc/apt/trusted.gpg.d/ (legacy global keyring) instead of /etc/apt/keyrings/
+          # because the tool doesn't add [signed-by=...] to the sources.list entry
+          KEY_FILE="/etc/apt/trusted.gpg.d/githubcli-archive-keyring.gpg"
+          
+          if [ -f "$KEY_FILE" ]; then
+            echo "✅ GPG key already exists at $KEY_FILE (idempotent)"
+            echo "KEY_IMPORTED=false" >> $GITHUB_ENV
+          else
+            echo "Importing GitHub CLI GPG key to $KEY_FILE..."
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
+              sudo tee "$KEY_FILE" > /dev/null
+            echo "✅ GPG key imported successfully"
+            echo "KEY_IMPORTED=true" >> $GITHUB_ENV
+          fi
+          
+          # Add the repository using our tool
+          sudo rust-add-apt-repository \
+            --uri https://cli.github.com/packages \
+            --dist stable \
+            --component main \
+            -y
+          EXIT_CODE=$?
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ FAIL: Add repository failed with exit code $EXIT_CODE"
+            exit 1
+          fi
+          
+          # Verify file was created
+          # Note: Tool generates filename from URI: cli_github_com_packages.list
+          REPO_FILE="/etc/apt/sources.list.d/cli_github_com_packages.list"
+          if [ ! -f "$REPO_FILE" ]; then
+            echo "❌ FAIL: Repository file not created at $REPO_FILE"
+            ls -la /etc/apt/sources.list.d/
+            exit 1
+          fi
+          
+          # Verify file contains expected content
+          if ! grep -q "cli.github.com/packages" "$REPO_FILE"; then
+            echo "❌ FAIL: Repository file doesn't contain expected URL"
+            cat "$REPO_FILE"
+            exit 1
+          fi
+          
+          echo "✅ PASS: Repository added successfully"
+          echo "File: $REPO_FILE"
+          cat "$REPO_FILE"
+          echo "REPO_ADDED=true" >> $GITHUB_ENV
+          
+          # Update package lists
+          sudo apt-get update -qq
+
+      # Test 5: Verify repository count increased
+      # SUCCESS: Count increased by exactly 1
+      - name: Test 5 - Verify count increased
+        run: |
+          echo "=== Test: Repository count ==="
+          
+          if [ "$REPO_ADDED" != "true" ]; then
+            echo "⏭️ SKIP: Repository was not added, skipping count verification"
+            exit 0
+          fi
+          
+          AFTER_COUNT=$(find /etc/apt/sources.list.d/ -name "*.list" -type f | wc -l)
+          EXPECTED_COUNT=$((INITIAL_COUNT + 1))
+          
+          echo "Initial count: $INITIAL_COUNT"
+          echo "Current count: $AFTER_COUNT"
+          echo "Expected count: $EXPECTED_COUNT"
+          
+          if [ "$AFTER_COUNT" -eq "$EXPECTED_COUNT" ]; then
+            echo "✅ PASS: Count increased by 1 as expected"
+          else
+            echo "❌ FAIL: Expected $EXPECTED_COUNT files, found $AFTER_COUNT"
+            exit 1
+          fi
+
+      # Test 6: Verify GPG key was imported
+      # SUCCESS: Key file exists (or Signed-By in sources file)
+      - name: Test 6 - Verify GPG key handling
+        run: |
+          echo "=== Test: GPG key handling ==="
+          
+          if [ "$REPO_ADDED" != "true" ]; then
+            echo "⏭️ SKIP: Repository was not added, skipping key verification"
+            exit 0
+          fi
+          
+          # Check if repository file has GPG key info (either Signed-By or system keyring)
+          REPO_FILE="/etc/apt/sources.list.d/cli_github_com_packages.list"
+          KEY_FILE="/etc/apt/trusted.gpg.d/githubcli-archive-keyring.gpg"
+          
+          if grep -q "signed-by" "$REPO_FILE" 2>/dev/null || [ -f "$KEY_FILE" ]; then
+            echo "✅ PASS: GPG key handling configured"
+            if [ -f "$KEY_FILE" ]; then
+              echo "Key file: $KEY_FILE"
+              ls -lh "$KEY_FILE"
+            fi
+          else
+            echo "⚠️ Note: No explicit GPG key found (may use system keyring)"
+            echo "Repository file content:"
+            cat "$REPO_FILE"
+          fi
+
+      # Test 7: Verify gh package is available
+      # SUCCESS: apt-cache shows gh package is available
+      - name: Test 7 - Verify package available
+        run: |
+          echo "=== Test: Package availability ==="
+          
+          if [ "$REPO_ADDED" != "true" ]; then
+            echo "⏭️ SKIP: Repository was not added, skipping package check"
+            exit 0
+          fi
+          
+          # Check if gh package is available
+          if apt-cache show gh &> /dev/null; then
+            echo "✅ PASS: gh package is available from repository"
+            apt-cache policy gh | head -10
+          else
+            echo "❌ FAIL: gh package not found in repository"
+            apt-cache policy gh || true
+            exit 1
+          fi
+
+      # Test 8: Install and verify gh package
+      # SUCCESS: gh installs and gh --version works
+      - name: Test 8 - Install gh package
+        run: |
+          echo "=== Test: Install gh package ==="
+          
+          if [ "$REPO_ADDED" != "true" ]; then
+            echo "⏭️ SKIP: Repository was not added, skipping install test"
+            exit 0
+          fi
+          
+          # Install gh
+          sudo apt-get install -y gh
+          EXIT_CODE=$?
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ FAIL: Failed to install gh package"
+            exit 1
+          fi
+          
+          # Verify gh command works
+          if ! command -v gh &> /dev/null; then
+            echo "❌ FAIL: gh command not found after installation"
+            exit 1
+          fi
+          
+          # Verify gh --version works
+          GH_VERSION=$(gh --version | head -1)
+          if [ -z "$GH_VERSION" ]; then
+            echo "❌ FAIL: gh --version produced no output"
+            exit 1
+          fi
+          
+          echo "✅ PASS: gh installed and working"
+          echo "Version: $GH_VERSION"
+          echo "GH_INSTALLED=true" >> $GITHUB_ENV
+
+      # Test 9: Test error handling with invalid arguments
+      # SUCCESS: Tool handles invalid input gracefully (warns but may succeed for unreachable repos)
+      - name: Test 9 - Error handling
+        run: |
+          echo "=== Test: Error handling ===" 
+          
+          # Test 1: Missing required arguments (should fail)
+          echo "Testing missing --dist argument..."
+          if sudo rust-add-apt-repository --uri https://example.com/repo --component main -y 2>&1; then
+            echo "⚠️ WARNING: Missing --dist didn't fail (may be acceptable)"
+          else
+            echo "✅ Missing --dist rejected properly"
+          fi
+          
+          # Test 2: Unreachable repository (tool should succeed, apt-get update will warn)
+          echo "Testing unreachable repository..."
+          sudo rust-add-apt-repository \
+            --uri https://invalid.example.com/nonexistent \
+            --dist test \
+            --component main \
+            -y 2>&1
+          EXIT_CODE=$?
+          
+          # The tool should succeed (exit 0) because the syntax is valid
+          # apt-get update will warn about the unreachable URL, but that's expected
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ FAIL: Tool failed on syntactically valid repository (exit $EXIT_CODE)"
+            exit 1
+          fi
+          
+          # Verify file WAS created (because the repository syntax is valid)
+          REPO_FILE="/etc/apt/sources.list.d/invalid_example_com_nonexistent.list"
+          if [ ! -f "$REPO_FILE" ]; then
+            echo "❌ FAIL: Repository file not created for valid syntax"
+            exit 1
+          fi
+          
+          # Clean up the test repository
+          sudo rm -f "$REPO_FILE"
+          
+          echo "✅ PASS: Tool handles edge cases appropriately"
+
+      # Cleanup: Remove GitHub CLI repository and package (runs even if tests fail)
+      - name: Cleanup - Remove GitHub CLI
+        if: always()
+        run: |
+          echo "=== Cleanup: Removing GitHub CLI ==="
+          
+          # Uninstall gh if it was installed
+          if [ "$GH_INSTALLED" = "true" ] || command -v gh &> /dev/null; then
+            echo "Uninstalling gh package..."
+            sudo apt-get remove -y gh || echo "Failed to remove gh package"
+          fi
+          
+          # Remove repository file
+          REPO_FILE="/etc/apt/sources.list.d/cli_github_com_packages.list"
+          if [ -f "$REPO_FILE" ]; then
+            echo "Removing repository file: $REPO_FILE"
+            sudo rm -f "$REPO_FILE"
+          fi
+          
+          # Remove GPG key ONLY if we imported it (don't touch pre-existing keys)
+          KEY_FILE="/etc/apt/trusted.gpg.d/githubcli-archive-keyring.gpg"
+          if [ "$KEY_IMPORTED" = "true" ] && [ -f "$KEY_FILE" ]; then
+            echo "Removing GPG key (we imported it): $KEY_FILE"
+            sudo rm -f "$KEY_FILE"
+          elif [ "$KEY_IMPORTED" = "false" ]; then
+            echo "Preserving pre-existing GPG key: $KEY_FILE"
+          fi
+          
+          # Verify removal
+          REPO_FILE="/etc/apt/sources.list.d/cli_github_com_packages.list"
+          if [ -f "$REPO_FILE" ]; then
+            echo "⚠️ WARNING: Repository file still exists after cleanup"
+          else
+            echo "✅ Cleanup successful"
+          fi
+          
+          sudo apt-get update -qq || true
+
+      # Test 10: Verify cleanup worked
+      # SUCCESS: Count equals initial count, no GitHub CLI files, gh not available
+      - name: Test 10 - Verify cleanup
+        run: |
+          echo "=== Test: Verify cleanup ==="
+          
+          FINAL_COUNT=$(find /etc/apt/sources.list.d/ -name "*.list" -type f | wc -l)
+          
+          echo "Initial count: $INITIAL_COUNT"
+          echo "Final count: $FINAL_COUNT"
+          
+          if [ "$FINAL_COUNT" -ne "$INITIAL_COUNT" ]; then
+            echo "⚠️ WARNING: Final count ($FINAL_COUNT) != Initial count ($INITIAL_COUNT)"
+            echo "State was not fully restored"
+          else
+            echo "✅ PASS: Repository count restored to initial state"
+          fi
+          
+          # Verify GitHub CLI repo specifically is gone
+          if [ -f /etc/apt/sources.list.d/github-cli.list ]; then
+            echo "❌ FAIL: GitHub CLI repository file still exists"
+            exit 1
+          fi
+          
+          # Verify gh command is not available
+          if command -v gh &> /dev/null; then
+            echo "⚠️ WARNING: gh command still available (may have been pre-installed)"
+          else
+            echo "✅ PASS: gh command not available"
+          fi
+          
+          echo "✅ PASS: GitHub CLI repository removed successfully"
+
+      # Summary
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "========================================="
+          echo "        E2E Test Suite Summary"
+          echo "========================================="
+          echo "Ubuntu: $(lsb_release -ds)"
+          echo "Kernel: $(uname -r)"
+          echo "Tool: $(rust-add-apt-repository --version)"
+          echo ""
+          echo "Initial repo count: $INITIAL_COUNT"
+          FINAL_COUNT=$(find /etc/apt/sources.list.d/ -name "*.list" -type f | wc -l)
+          echo "Final repo count: $FINAL_COUNT"
+          echo ""
+          if [ "$FINAL_COUNT" -eq "$INITIAL_COUNT" ]; then
+            echo "✅ System state restored (idempotent)"
+          else
+            echo "⚠️ System state changed (non-idempotent)"
+          fi
