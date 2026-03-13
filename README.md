@@ -53,7 +53,7 @@ See [DEPENDENCIES.md](DEPENDENCIES.md) for detailed information.
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/maw629/rust-add-apt-repository.git
 cd rust-add-apt-repository
 
 # Build release binary
@@ -69,7 +69,7 @@ cargo build --release
 # Option 1: Install binary directly
 sudo cp target/release/rust-add-apt-repository /usr/local/bin/
 
-# Option 2: Build and install Debian package (future)
+# Option 2: Build and install Debian package
 debuild -us -uc -b
 sudo dpkg -i ../rust-add-apt-repository_*.deb
 ```
@@ -176,7 +176,7 @@ For comprehensive examples covering authentication, DEB822 format, advanced scen
 - **[RELEASE-NOTES.md](RELEASE-NOTES.md)** - Release notes and migration guide
 
 ### Phase Summaries
-- **[PHASE-0-SUMMARY.md](PHASE-0-SUMMARY.md)** through **[PHASE-10-SUMMARY.md](PHASE-10-SUMMARY.md)**
+- **[docs/development/PHASE-0-SUMMARY.md](docs/development/PHASE-0-SUMMARY.md)** through **[docs/development/PHASE-12-SUMMARY.md](docs/development/PHASE-12-SUMMARY.md)**
   - Detailed documentation of each completed phase
   - Implementation details and design decisions
   - Testing results and validation
@@ -275,7 +275,7 @@ rust-add-apt-repository/
 │   └── rust-add-apt-repository.1  # Man page (troff)
 └── debian/               # Debian packaging files
 
-Total: ~4,500 lines of Rust code across 17 modules
+Total: ~4,650 lines of Rust code across 17 modules
 ```
 
 ### Code Quality
@@ -330,10 +330,10 @@ This implementation maintains compatibility with the Python `add-apt-repository`
 - **Phase 1-4** (Core Features): Complete ✅
 - **Phase 5-7** (PPA, Auth, Cloud): Complete ✅
 - **Phase 8-10** (Advanced Features): Complete ✅
-- **Phase 11** (Testing & Docs): **In Progress** 🚧
-- **Phase 12** (Package & Distribution): Upcoming ⏳
+- **Phase 11** (Testing & Docs): Complete ✅
+- **Phase 12** (Package & Distribution): Complete ✅
 
-**Current Status**: 85% complete (11 of 13 phases done)
+**Current Status**: 100% complete - All 13 phases implemented and tested
 
 ## Contributing
 

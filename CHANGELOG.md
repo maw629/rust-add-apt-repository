@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.1] - 2026-03-03
+## [0.2.1] - 2026-03-04
 
 ### Changed
 - Simplified GitHub release workflow trigger to use tag selector UI instead of manual input
@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced RELEASE-NOTES.md with dependency management section
 - Updated .github/copilot-instructions.md with current dependency versions
 
-## [0.2.0] - 2026-03-03
+## [0.2.0] - 2026-03-04
 
 ### Added
 - **CI/CD Automation**:
@@ -40,6 +40,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Security policy (SECURITY.md)
   - Pull request template
   - GitHub Copilot instructions for AI-assisted development
+- **Core Features** (Initial implementation):
+  - Repository management (add, remove, list)
+  - Full PPA support with Launchpad API integration
+  - Ubuntu Cloud Archive support (OpenStack releases)
+  - GPG key management (automatic import and verification)
+  - Private PPA authentication
+  - Global operations (components, pockets, source code)
+  - DEB822 format support (.sources files)
+  - Advanced features (debug mode, validation, dry-run)
+  - Proper exit codes and error handling
 
 ### Fixed
 - **Critical Bug Fixes**:
@@ -65,53 +75,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added LICENSE file (GPL-2.0-or-later)
 - Updated README.md with badges and improved structure
 
-## [0.1.0] - 2024-12-24
+### Testing
+- 95 comprehensive tests (74 unit + 21 integration)
+- All tests passing
+- Coverage of all major features
 
-### Added
-- **Core Features** (All 13 phases completed):
-  - Repository management (add, remove, list)
-  - Full PPA support with Launchpad API integration
-  - Ubuntu Cloud Archive support (OpenStack releases)
-  - GPG key management (automatic import and verification)
-  - Private PPA authentication
-  - Global operations (components, pockets, source code)
-  - DEB822 format support (.sources files)
-  - Advanced features (debug mode, validation, dry-run)
-  - Proper exit codes and error handling
-
-- **Testing**:
-  - 95 comprehensive tests (74 unit + 21 integration)
-  - All tests passing
-  - Coverage of all major features
-
-- **Documentation**:
-  - Complete implementation plan (docs/development/plan.md)
-  - Python source code analysis (docs/development/source-analysis.md)
-  - Phase-by-phase summaries
-  - Man pages for command-line usage
-
-- **Packaging**:
-  - Debian packaging infrastructure
-  - Binary installable on Ubuntu/Debian systems
-  - Co-installable with original Python version
-
-### Notable Implementation Details
-- Behavioral compatibility with Python version from `software-properties-common`
-- Selective backup strategy (only modified files)
-- Support for both one-line and DEB822 repository formats
-- Comprehensive validation and error reporting
-- Root permission checks
-- Launchpad API integration for PPA metadata
+### Packaging
+- Debian packaging infrastructure
+- Binary installable on Ubuntu/Debian systems
+- Co-installable with original Python version
 
 ---
 
 ## Version History Summary
 
-- **v0.2.1** (2026-03-03): Release workflow improvements and dependency management
-- **v0.2.0** (2026-03-03): CI/CD automation, bug fixes, documentation improvements
-- **v0.1.0** (2024-12-24): Initial release with all core features
+- **v0.2.1** (2026-03-04): Release workflow improvements and dependency management
+- **v0.2.0** (2026-03-04): Initial public release with all core features
 
 [Unreleased]: https://github.com/maw629/rust-add-apt-repository/compare/v0.2.1...HEAD
 [0.2.1]: https://github.com/maw629/rust-add-apt-repository/compare/v0.2.0...v0.2.1
-[0.2.0]: https://github.com/maw629/rust-add-apt-repository/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/maw629/rust-add-apt-repository/releases/tag/v0.1.0
+[0.2.0]: https://github.com/maw629/rust-add-apt-repository/releases/tag/v0.2.0
