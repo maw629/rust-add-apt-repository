@@ -157,7 +157,7 @@ jobs:
           fi
           
           # Check if key was already imported (for idempotency tracking)
-          KEY_FILE="/etc/apt/trusted.gpg.d/cli_github_com_packages-archive-keyring.gpg"
+          KEY_FILE="/etc/apt/trusted.gpg.d/cli_github_com_packages.gpg"
           if [ -f "$KEY_FILE" ]; then
             echo "✅ GPG key already exists at $KEY_FILE (idempotent)"
             echo "KEY_IMPORTED=false" >> $GITHUB_ENV
@@ -242,8 +242,8 @@ jobs:
           fi
           
           # The --key flag should have imported the key to the global keyring
-          # Key filename is generated from repository URI
-          KEY_FILE="/etc/apt/trusted.gpg.d/cli_github_com_packages-archive-keyring.gpg"
+          # Key filename is generated from repository file stem (without .list)
+          KEY_FILE="/etc/apt/trusted.gpg.d/cli_github_com_packages.gpg"
           
           if [ -f "$KEY_FILE" ]; then
             echo "✅ PASS: GPG key imported by --key flag"
@@ -383,7 +383,7 @@ jobs:
           fi
           
           # Remove GPG key ONLY if we imported it (don't touch pre-existing keys)
-          KEY_FILE="/etc/apt/trusted.gpg.d/cli_github_com_packages-archive-keyring.gpg"
+          KEY_FILE="/etc/apt/trusted.gpg.d/cli_github_com_packages.gpg"
           if [ "$KEY_IMPORTED" = "true" ] && [ -f "$KEY_FILE" ]; then
             echo "Removing GPG key (we imported it): $KEY_FILE"
             sudo rm -f "$KEY_FILE"
