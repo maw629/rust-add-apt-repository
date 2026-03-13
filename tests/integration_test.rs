@@ -437,14 +437,14 @@ fn test_argument_order_flexibility() {
 
     // Test 4: Multiple flags in different positions
     let (exit_code4, stdout4, _stderr4) = run_command(&[
+        "ppa:mozillateam/ppa",
         "--dry-run",
-        "cloud-archive:bobcat",
         "--no-update",
     ]);
     assert_eq!(exit_code4, 0, "Flags around positional should work");
     assert!(
-        stdout4.contains("bobcat"),
-        "Should process cloud archive correctly"
+        stdout4.contains("mozillateam"),
+        "Should process PPA correctly"
     );
 
     // Test 5: Full sources.list line with flags after
