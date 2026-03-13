@@ -247,13 +247,19 @@ jobs:
           fi
           
           # Check if repository file has GPG key info (either Signed-By or system keyring)
-          if grep -q "signed-by" /etc/apt/sources.list.d/github-cli.list 2>/dev/null || \
-             [ -f /etc/apt/trusted.gpg.d/github-cli*.gpg ] 2>/dev/null; then
+          REPO_FILE="/etc/apt/sources.list.d/cli_github_com_packages.list"
+          KEY_FILE="/etc/apt/trusted.gpg.d/githubcli-archive-keyring.gpg"
+          
+          if grep -q "signed-by" "$REPO_FILE" 2>/dev/null || [ -f "$KEY_FILE" ]; then
             echo "✅ PASS: GPG key handling configured"
+            if [ -f "$KEY_FILE" ]; then
+              echo "Key file: $KEY_FILE"
+              ls -lh "$KEY_FILE"
+            fi
           else
             echo "⚠️ Note: No explicit GPG key found (may use system keyring)"
             echo "Repository file content:"
-            cat /etc/apt/sources.list.d/github-cli.list
+            cat "$REPO_FILE"
           fi
 
       # Test 7: Verify gh package is available
