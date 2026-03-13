@@ -400,3 +400,83 @@ fn test_conflicting_options() {
     // Should either accept (last wins) or reject conflicting options
     assert!(exit_code >= 0, "Should have valid exit code");
 }
+
+/// Test argument order flexibility
+/// Flags should be allowed before or after positional arguments for better UX
+#[test]
+fn test_argument_order_flexibility() {
+    // Test 1: Flags before positional argument (traditional order)
+    let (exit_code1, stdout1, _stderr1) =
+        run_command(&["--dry-run", "ppa:git-core/ppa"]);
+    assert_eq!(exit_code1, 0, "Flags before positional should work");
+    assert!(
+        stdout1.contains("git-core"),
+        "Should process PPA correctly"
+    );
+
+    // Test 2: Flags after positional argument (user-friendly order)
+    let (exit_code2, stdout2, _stderr2) =
+        run_command(&["ppa:git-core/ppa", "--dry-run"]);
+    assert_eq!(exit_code2, 0, "Flags after positional should work");
+    assert!(
+        stdout2.contains("git-core"),
+        "Should process PPA correctly"
+    );
+
+    // Test 3: Mixed order with explicit flag syntax
+    let (exit_code3, stdout3, _stderr3) = run_command(&[
+        "--dry-run",
+        "--ppa",
+        "ppa:git-core/ppa",
+    ]);
+    assert_eq!(exit_code3, 0, "Explicit flag syntax should work");
+    assert!(
+        stdout3.contains("git-core"),
+        "Should process PPA correctly"
+    );
+
+    // Test 4: Multiple flags in different positions
+    let (exit_code4, stdout4, _stderr4) = run_command(&[
+        "--dry-run",
+        "cloud-archive:bobcat",
+        "--no-update",
+    ]);
+    assert_eq!(exit_code4, 0, "Flags around positional should work");
+    assert!(
+        stdout4.contains("bobcat"),
+        "Should process cloud archive correctly"
+    );
+
+    // Test 5: Full sources.list line with flags after
+    let (exit_code5, stdout5, _stderr5) = run_command(&[
+        "deb http://example.com/repo noble main",
+        "--dry-run",
+    ]);
+    assert_eq!(exit_code5, 0, "Full line with flags after should work");
+    assert!(
+        stdout5.contains("example.com"),
+        "Should process sources.list line correctly"
+    );
+
+    // All outputs should be functionally equivalent (all dry-run mode)
+    assert!(
+        stdout1.contains("[DRY RUN]"),
+        "Test 1 should be in dry-run mode"
+    );
+    assert!(
+        stdout2.contains("[DRY RUN]"),
+        "Test 2 should be in dry-run mode"
+    );
+    assert!(
+        stdout3.contains("[DRY RUN]"),
+        "Test 3 should be in dry-run mode"
+    );
+    assert!(
+        stdout4.contains("[DRY RUN]"),
+        "Test 4 should be in dry-run mode"
+    );
+    assert!(
+        stdout5.contains("[DRY RUN]"),
+        "Test 5 should be in dry-run mode"
+    );
+}

@@ -122,7 +122,7 @@ pub struct RepoSpec {
     pub sourceslist: Option<Vec<String>>,
 
     /// sources.list line (positional, deprecated - use --sourceslist instead)
-    #[arg(trailing_var_arg = true, hide = true)]
+    #[arg(hide = true)]
     pub line: Vec<String>,
 }
 
