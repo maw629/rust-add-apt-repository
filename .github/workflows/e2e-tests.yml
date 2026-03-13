@@ -39,8 +39,9 @@ jobs:
       - name: Build Debian package
         run: |
           echo "=== Building .deb package with debuild ==="
+          # Use -d flag to skip build dependency checks since Rust is installed via rustup, not apt
           # debuild runs: cargo clean, cargo build --release, cargo test, and packages
-          debuild -us -uc -b
+          debuild -d -us -uc -b
           
           echo "=== Package built ==="
           ls -lh ../*.deb
