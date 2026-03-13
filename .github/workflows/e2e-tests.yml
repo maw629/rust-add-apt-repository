@@ -157,10 +157,11 @@ jobs:
           
           # Import GitHub CLI GPG key (required before adding repo)
           # Note: rust-add-apt-repository doesn't support --key flag for custom URIs yet
+          # We use /etc/apt/trusted.gpg.d/ (legacy global keyring) instead of /etc/apt/keyrings/
+          # because the tool doesn't add [signed-by=...] to the sources.list entry
           echo "Importing GitHub CLI GPG key..."
-          sudo mkdir -p /etc/apt/keyrings
           curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
-            sudo dd of=/etc/apt/keyrings/githubcli-archive-keyring.gpg
+            sudo tee /etc/apt/trusted.gpg.d/githubcli-archive-keyring.gpg > /dev/null
           
           # Add the repository using our tool
           sudo rust-add-apt-repository \
