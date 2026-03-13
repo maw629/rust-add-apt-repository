@@ -3,7 +3,7 @@
 [![License: GPL v2+](https://img.shields.io/badge/License-GPL%20v2+-blue.svg)](https://www.gnu.org/licenses/gpl-2.0)
 [![Version](https://img.shields.io/badge/version-0.2.1-green.svg)](https://github.com/maw629/rust-add-apt-repository/releases)
 [![CI](https://github.com/maw629/rust-add-apt-repository/workflows/CI/badge.svg)](https://github.com/maw629/rust-add-apt-repository/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-95%20passing-success.svg)](https://github.com/maw629/rust-add-apt-repository/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-105%20passing-success.svg)](https://github.com/maw629/rust-add-apt-repository/actions/workflows/ci.yml)
 
 A Rust implementation of the Debian/Ubuntu `add-apt-repository` command, designed for behavioral compatibility with the Python version from `software-properties-common` while being installable alongside the original.
 
@@ -13,7 +13,7 @@ A Rust implementation of the Debian/Ubuntu `add-apt-repository` command, designe
 
 **Production Ready:**
 - ✅ All core features implemented
-- ✅ 95 tests passing (74 unit + 21 integration)
+- ✅ 105 tests passing (74 unit + 31 integration)
 - ✅ CI/CD automation with GitHub Actions
 - ✅ Automated release workflow
 - ✅ Comprehensive documentation
@@ -27,7 +27,7 @@ See [docs/development/plan.md](docs/development/plan.md) for the complete implem
 - ✅ **Repository Management**: Add, remove, list repositories
 - ✅ **PPA Support**: Full Ubuntu PPA integration with Launchpad API
 - ✅ **Cloud Archive**: Ubuntu OpenStack releases (bobcat, caracal, etc.)
-- ✅ **GPG Key Management**: Automatic key import and verification
+- ✅ **GPG Key Management**: Automatic key import and verification (with --key, --keyring, --key-id flags)
 - ✅ **Authentication**: Private PPA support with credential management
 - ✅ **Global Operations**: Component, pocket, and source code management
 - ✅ **DEB822 Format**: Support for modern .sources files
@@ -129,18 +129,47 @@ sudo apt update
 sudo apt install nova-compute neutron-linuxbridge-agent
 ```
 
-### Workflow 4: Add Custom Repository
+### Workflow 4: Add Repository with GPG Key
 
 ```bash
-# Add a third-party repository
+# Option 1: Download key from URL
+sudo rust-add-apt-repository \
+  --uri https://cli.github.com/packages \
+  --dist stable \
+  --component main \
+  --key https://cli.github.com/packages/githubcli-archive-keyring.gpg
+
+# Option 2: Import key from local file
 sudo rust-add-apt-repository \
   --uri https://repo.example.com/ubuntu \
   --dist noble \
-  --component main
+  --component main \
+  --keyring /usr/share/keyrings/example.gpg
+
+# Option 3: Fetch key by ID from keyserver
+sudo rust-add-apt-repository \
+  --uri https://example.com/repo \
+  --dist noble \
+  --component main \
+  --key-id 23F3D4EA75716059
 
 # Update and verify
 sudo apt update
 apt-cache policy
+```
+
+### Workflow 5: Preview Changes with Dry-Run
+
+```bash
+# Preview adding a repository with a key
+rust-add-apt-repository --dry-run \
+  --uri https://example.com/repo \
+  --dist noble \
+  --component main \
+  --key https://example.com/key.gpg
+
+# Shows what would be added without making changes
+# No root required for --dry-run mode
 ```
 
 ### Quick Reference
@@ -150,10 +179,13 @@ apt-cache policy
 | Add PPA | `sudo rust-add-apt-repository ppa:user/ppa-name` |
 | Remove PPA | `sudo rust-add-apt-repository --remove ppa:user/ppa-name` |
 | Add Cloud Archive | `sudo rust-add-apt-repository cloud-archive:release` |
+| Add repo with key URL | `sudo rust-add-apt-repository --uri <URI> --dist <DIST> --component <COMP> --key <URL>` |
+| Add repo with keyring | `sudo rust-add-apt-repository --uri <URI> --dist <DIST> --component <COMP> --keyring <FILE>` |
+| Add repo with key ID | `sudo rust-add-apt-repository --uri <URI> --dist <DIST> --component <COMP> --key-id <ID>` |
 | Enable component | `sudo rust-add-apt-repository --component universe` |
 | Enable sources | `sudo rust-add-apt-repository -s` |
 | List repositories | `rust-add-apt-repository --list` |
-| Preview changes | `sudo rust-add-apt-repository --dry-run ppa:test/ppa` |
+| Preview changes | `rust-add-apt-repository --dry-run ppa:test/ppa` |
 
 ### More Examples
 

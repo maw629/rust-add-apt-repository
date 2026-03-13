@@ -460,3 +460,250 @@ fn test_argument_order_flexibility() {
         "Test 5 should be in dry-run mode"
     );
 }
+
+/// Test key flag: --key with URL
+#[test]
+fn test_key_flag_with_url() {
+    let (exit_code, stdout, _stderr) = run_command(&[
+        "--dry-run",
+        "--uri",
+        "http://example.com/repo",
+        "--dist",
+        "noble",
+        "--component",
+        "main",
+        "--key",
+        "https://example.com/key.gpg",
+    ]);
+
+    assert_eq!(exit_code, 0, "--key flag should work with --uri");
+    assert!(
+        stdout.contains("example.com/repo"),
+        "Should show repository URI"
+    );
+    assert!(stdout.contains("[DRY RUN]"), "Should be in dry-run mode");
+}
+
+/// Test key flag: --keyring with file path
+#[test]
+fn test_key_flag_with_keyring() {
+    // Create a temporary keyring file for testing
+    let temp_dir = std::env::temp_dir();
+    let keyring_path = temp_dir.join("test-keyring.gpg");
+    std::fs::write(&keyring_path, "fake key data").unwrap();
+
+    let (exit_code, stdout, _stderr) = run_command(&[
+        "--dry-run",
+        "--uri",
+        "http://example.com/repo",
+        "--dist",
+        "noble",
+        "--component",
+        "main",
+        "--keyring",
+        keyring_path.to_str().unwrap(),
+    ]);
+
+    // Clean up
+    let _ = std::fs::remove_file(&keyring_path);
+
+    assert_eq!(exit_code, 0, "--keyring flag should work with --uri");
+    assert!(
+        stdout.contains("example.com/repo"),
+        "Should show repository URI"
+    );
+}
+
+/// Test key flag: --key-id with key ID
+#[test]
+fn test_key_flag_with_key_id() {
+    let (exit_code, stdout, _stderr) = run_command(&[
+        "--dry-run",
+        "--uri",
+        "http://example.com/repo",
+        "--dist",
+        "noble",
+        "--component",
+        "main",
+        "--key-id",
+        "23F3D4EA75716059",
+    ]);
+
+    assert_eq!(exit_code, 0, "--key-id flag should work with --uri");
+    assert!(
+        stdout.contains("example.com/repo"),
+        "Should show repository URI"
+    );
+}
+
+/// Test validation: key flags cannot be used with PPA
+#[test]
+fn test_key_flag_with_ppa_fails() {
+    let (exit_code, _stdout, _stderr) = run_command(&[
+        "--dry-run",
+        "--ppa",
+        "ppa:test/test",
+        "--key",
+        "https://example.com/key.gpg",
+    ]);
+
+    assert_eq!(
+        exit_code, 2,
+        "--key flag should fail with PPA (exit code 2)"
+    );
+}
+
+/// Test validation: key flags cannot be used with Cloud Archive
+#[test]
+fn test_key_flag_with_cloud_archive_fails() {
+    let (exit_code, _stdout, _stderr) = run_command(&[
+        "--dry-run",
+        "--cloud",
+        "bobcat",
+        "--key",
+        "https://example.com/key.gpg",
+    ]);
+
+    assert_eq!(
+        exit_code, 2,
+        "--key flag should fail with Cloud Archive (exit code 2)"
+    );
+}
+
+/// Test validation: key flags require --uri
+#[test]
+fn test_key_flag_requires_uri() {
+    let (exit_code, _stdout, _stderr) = run_command(&[
+        "--dry-run",
+        "--key",
+        "https://example.com/key.gpg",
+        "deb http://example.com/repo noble main",
+    ]);
+
+    assert_eq!(
+        exit_code, 2,
+        "--key flag should fail without --uri (exit code 2)"
+    );
+}
+
+/// Test validation: only one key flag allowed at a time
+#[test]
+fn test_multiple_key_flags_fail() {
+    let (exit_code, _stdout, _stderr) = run_command(&[
+        "--dry-run",
+        "--uri",
+        "http://example.com/repo",
+        "--dist",
+        "noble",
+        "--component",
+        "main",
+        "--key",
+        "https://example.com/key.gpg",
+        "--key-id",
+        "23F3D4EA",
+    ]);
+
+    // clap should prevent this with conflicts_with_all
+    assert_ne!(exit_code, 0, "Multiple key flags should fail");
+}
+
+/// Test validation: keyring file must exist
+#[test]
+fn test_keyring_file_must_exist() {
+    let (exit_code, _stdout, _stderr) = run_command(&[
+        "--dry-run",
+        "--uri",
+        "http://example.com/repo",
+        "--dist",
+        "noble",
+        "--component",
+        "main",
+        "--keyring",
+        "/nonexistent/path/to/keyring.gpg",
+    ]);
+
+    assert_eq!(
+        exit_code, 2,
+        "Non-existent keyring file should fail (exit code 2)"
+    );
+}
+
+/// Test validation: key ID must be valid hex format
+#[test]
+fn test_key_id_validation() {
+    // Test invalid characters
+    let (exit_code1, _stdout, _stderr) = run_command(&[
+        "--dry-run",
+        "--uri",
+        "http://example.com/repo",
+        "--dist",
+        "noble",
+        "--component",
+        "main",
+        "--key-id",
+        "INVALID!",
+    ]);
+    assert_eq!(
+        exit_code1, 2,
+        "Invalid key ID characters should fail (exit code 2)"
+    );
+
+    // Test wrong length
+    let (exit_code2, _stdout, _stderr) = run_command(&[
+        "--dry-run",
+        "--uri",
+        "http://example.com/repo",
+        "--dist",
+        "noble",
+        "--component",
+        "main",
+        "--key-id",
+        "123",
+    ]);
+    assert_eq!(
+        exit_code2, 2,
+        "Wrong length key ID should fail (exit code 2)"
+    );
+
+    // Test valid 8-char key ID
+    let (exit_code3, _stdout, _stderr) = run_command(&[
+        "--dry-run",
+        "--uri",
+        "http://example.com/repo",
+        "--dist",
+        "noble",
+        "--component",
+        "main",
+        "--key-id",
+        "23F3D4EA",
+    ]);
+    assert_eq!(exit_code3, 0, "Valid 8-char key ID should work");
+
+    // Test valid 16-char key ID
+    let (exit_code4, _stdout, _stderr) = run_command(&[
+        "--dry-run",
+        "--uri",
+        "http://example.com/repo",
+        "--dist",
+        "noble",
+        "--component",
+        "main",
+        "--key-id",
+        "23F3D4EA75716059",
+    ]);
+    assert_eq!(exit_code4, 0, "Valid 16-char key ID should work");
+
+    // Test valid 40-char fingerprint
+    let (exit_code5, _stdout, _stderr) = run_command(&[
+        "--dry-run",
+        "--uri",
+        "http://example.com/repo",
+        "--dist",
+        "noble",
+        "--component",
+        "main",
+        "--key-id",
+        "F23C5A6CF475977595C89F51BA6932366A755776",
+    ]);
+    assert_eq!(exit_code5, 0, "Valid 40-char fingerprint should work");
+}
