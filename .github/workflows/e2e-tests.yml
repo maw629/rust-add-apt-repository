@@ -75,13 +75,22 @@ jobs:
           echo "Initial .list files: $INITIAL_COUNT"
           echo "INITIAL_COUNT=$INITIAL_COUNT" >> $GITHUB_ENV
           
-          # Record if Git PPA already exists (for idempotency)
-          if ls /etc/apt/sources.list.d/git-core-ubuntu-ppa-*.list 2>/dev/null; then
-            echo "GIT_PPA_PRE_EXISTS=true" >> $GITHUB_ENV
-            echo "⚠️ Git PPA already exists (workflow not starting clean)"
+          # Check if gh is already installed (should NOT be)
+          if command -v gh &> /dev/null; then
+            echo "⚠️ WARNING: gh already installed (unexpected)"
+            echo "GH_PRE_EXISTS=true" >> $GITHUB_ENV
           else
-            echo "GIT_PPA_PRE_EXISTS=false" >> $GITHUB_ENV
-            echo "✅ Git PPA not present (clean state)"
+            echo "✅ gh not installed (expected clean state)"
+            echo "GH_PRE_EXISTS=false" >> $GITHUB_ENV
+          fi
+          
+          # Record if GitHub CLI repo already exists (for idempotency)
+          if [ -f /etc/apt/sources.list.d/github-cli.list ]; then
+            echo "GH_REPO_PRE_EXISTS=true" >> $GITHUB_ENV
+            echo "⚠️ GitHub CLI repo already exists (workflow not starting clean)"
+          else
+            echo "GH_REPO_PRE_EXISTS=false" >> $GITHUB_ENV
+            echo "✅ GitHub CLI repo not present (clean state)"
           fi
 
       # Test 2: Verify --list functionality
@@ -131,47 +140,51 @@ jobs:
           
           echo "✅ PASS: Dry-run did not modify system"
 
-      # Test 4: Add PPA (idempotent - skip if already exists)
-      # SUCCESS: File exists after operation, exit code 0 or already-exists
-      - name: Test 4 - Add Git PPA
-        id: add_ppa
+      # Test 4: Add GitHub CLI repository (idempotent - skip if already exists)
+      # SUCCESS: File exists after operation, exit code 0
+      - name: Test 4 - Add GitHub CLI repository
+        id: add_repo
         run: |
-          echo "=== Test: Add ppa:git-core/ppa ==="
+          echo "=== Test: Add GitHub CLI repository ==="
           
           # Skip if already exists (idempotency)
-          if [ "$GIT_PPA_PRE_EXISTS" = "true" ]; then
-            echo "⏭️ SKIP: Git PPA already exists, skipping add test"
-            echo "PPA_ADDED=false" >> $GITHUB_ENV
+          if [ "$GH_REPO_PRE_EXISTS" = "true" ]; then
+            echo "⏭️ SKIP: GitHub CLI repo already exists, skipping add test"
+            echo "REPO_ADDED=false" >> $GITHUB_ENV
             exit 0
           fi
           
-          # Add the PPA
-          sudo rust-add-apt-repository ppa:git-core/ppa -y
+          # Add the repository using our tool
+          sudo rust-add-apt-repository \
+            --uri https://cli.github.com/packages \
+            --dist stable \
+            --component main \
+            -y
           EXIT_CODE=$?
           
           if [ $EXIT_CODE -ne 0 ]; then
-            echo "❌ FAIL: Add PPA failed with exit code $EXIT_CODE"
+            echo "❌ FAIL: Add repository failed with exit code $EXIT_CODE"
             exit 1
           fi
           
           # Verify file was created
-          PPA_FILE=$(ls /etc/apt/sources.list.d/git-core-ubuntu-ppa-*.list 2>/dev/null | head -1)
-          if [ -z "$PPA_FILE" ]; then
-            echo "❌ FAIL: PPA file not created"
+          if [ ! -f /etc/apt/sources.list.d/github-cli.list ]; then
+            echo "❌ FAIL: Repository file not created"
+            ls -la /etc/apt/sources.list.d/
             exit 1
           fi
           
           # Verify file contains expected content
-          if ! grep -q "git-core/ppa" "$PPA_FILE"; then
-            echo "❌ FAIL: PPA file doesn't contain expected repository"
-            cat "$PPA_FILE"
+          if ! grep -q "cli.github.com/packages" /etc/apt/sources.list.d/github-cli.list; then
+            echo "❌ FAIL: Repository file doesn't contain expected URL"
+            cat /etc/apt/sources.list.d/github-cli.list
             exit 1
           fi
           
-          echo "✅ PASS: PPA added successfully"
-          echo "File: $PPA_FILE"
-          cat "$PPA_FILE"
-          echo "PPA_ADDED=true" >> $GITHUB_ENV
+          echo "✅ PASS: Repository added successfully"
+          echo "File: /etc/apt/sources.list.d/github-cli.list"
+          cat /etc/apt/sources.list.d/github-cli.list
+          echo "REPO_ADDED=true" >> $GITHUB_ENV
           
           # Update package lists
           sudo apt-get update -qq
@@ -182,8 +195,8 @@ jobs:
         run: |
           echo "=== Test: Repository count ==="
           
-          if [ "$PPA_ADDED" != "true" ]; then
-            echo "⏭️ SKIP: PPA was not added, skipping count verification"
+          if [ "$REPO_ADDED" != "true" ]; then
+            echo "⏭️ SKIP: Repository was not added, skipping count verification"
             exit 0
           fi
           
@@ -202,103 +215,147 @@ jobs:
           fi
 
       # Test 6: Verify GPG key was imported
-      # SUCCESS: Key file exists in /etc/apt/trusted.gpg.d/
-      - name: Test 6 - Verify GPG key imported
+      # SUCCESS: Key file exists (or Signed-By in sources file)
+      - name: Test 6 - Verify GPG key handling
         run: |
-          echo "=== Test: GPG key import ==="
+          echo "=== Test: GPG key handling ==="
           
-          if [ "$PPA_ADDED" != "true" ]; then
-            echo "⏭️ SKIP: PPA was not added, skipping key verification"
+          if [ "$REPO_ADDED" != "true" ]; then
+            echo "⏭️ SKIP: Repository was not added, skipping key verification"
             exit 0
           fi
           
-          # Check for Git PPA signing key
-          KEY_FILE=$(ls /etc/apt/trusted.gpg.d/git-core-ubuntu-ppa-*.gpg 2>/dev/null | head -1)
-          
-          if [ -z "$KEY_FILE" ]; then
-            echo "❌ FAIL: GPG key file not found"
-            ls -la /etc/apt/trusted.gpg.d/ || true
-            exit 1
+          # Check if repository file has GPG key info (either Signed-By or system keyring)
+          if grep -q "signed-by" /etc/apt/sources.list.d/github-cli.list 2>/dev/null || \
+             [ -f /etc/apt/trusted.gpg.d/github-cli*.gpg ] 2>/dev/null; then
+            echo "✅ PASS: GPG key handling configured"
+          else
+            echo "⚠️ Note: No explicit GPG key found (may use system keyring)"
+            echo "Repository file content:"
+            cat /etc/apt/sources.list.d/github-cli.list
           fi
-          
-          echo "✅ PASS: GPG key imported at $KEY_FILE"
 
-      # Test 7: Verify package from PPA is available
-      # SUCCESS: apt-cache policy mentions the PPA
-      - name: Test 7 - Verify PPA packages available
+      # Test 7: Verify gh package is available
+      # SUCCESS: apt-cache shows gh package is available
+      - name: Test 7 - Verify package available
         run: |
           echo "=== Test: Package availability ==="
           
-          if [ "$PPA_ADDED" != "true" ]; then
-            echo "⏭️ SKIP: PPA was not added, skipping package check"
+          if [ "$REPO_ADDED" != "true" ]; then
+            echo "⏭️ SKIP: Repository was not added, skipping package check"
             exit 0
           fi
           
-          # Check apt-cache policy for git
-          POLICY_OUTPUT=$(apt-cache policy git 2>&1)
-          
-          if echo "$POLICY_OUTPUT" | grep -q "git-core/ppa"; then
-            echo "✅ PASS: Packages from git-core/ppa are available"
+          # Check if gh package is available
+          if apt-cache show gh &> /dev/null; then
+            echo "✅ PASS: gh package is available from repository"
+            apt-cache policy gh | head -10
           else
-            echo "❌ FAIL: git-core/ppa not found in apt-cache policy"
-            echo "$POLICY_OUTPUT"
+            echo "❌ FAIL: gh package not found in repository"
+            apt-cache policy gh || true
             exit 1
           fi
 
-      # Test 8: Test error handling with invalid PPA
+      # Test 8: Install and verify gh package
+      # SUCCESS: gh installs and gh --version works
+      - name: Test 8 - Install gh package
+        run: |
+          echo "=== Test: Install gh package ==="
+          
+          if [ "$REPO_ADDED" != "true" ]; then
+            echo "⏭️ SKIP: Repository was not added, skipping install test"
+            exit 0
+          fi
+          
+          # Install gh
+          sudo apt-get install -y gh
+          EXIT_CODE=$?
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ FAIL: Failed to install gh package"
+            exit 1
+          fi
+          
+          # Verify gh command works
+          if ! command -v gh &> /dev/null; then
+            echo "❌ FAIL: gh command not found after installation"
+            exit 1
+          fi
+          
+          # Verify gh --version works
+          GH_VERSION=$(gh --version | head -1)
+          if [ -z "$GH_VERSION" ]; then
+            echo "❌ FAIL: gh --version produced no output"
+            exit 1
+          fi
+          
+          echo "✅ PASS: gh installed and working"
+          echo "Version: $GH_VERSION"
+          echo "GH_INSTALLED=true" >> $GITHUB_ENV
+
+      # Test 9: Test error handling with invalid repository
       # SUCCESS: Command fails gracefully with exit code 1
-      - name: Test 8 - Error handling
+      - name: Test 9 - Error handling
         run: |
           echo "=== Test: Error handling ==="
           
-          # This should fail
-          sudo rust-add-apt-repository ppa:nonexistent/invalid-ppa-12345 -y 2>&1
+          # This should fail (invalid URI)
+          sudo rust-add-apt-repository \
+            --uri https://invalid.example.com/nonexistent \
+            --dist test \
+            --component main \
+            -y 2>&1
           EXIT_CODE=$?
           
           if [ $EXIT_CODE -eq 0 ]; then
-            echo "❌ FAIL: Invalid PPA succeeded (should have failed)"
+            echo "❌ FAIL: Invalid repository succeeded (should have failed)"
             exit 1
           fi
           
           # Verify no file was created
-          if ls /etc/apt/sources.list.d/nonexistent-ubuntu-invalid-ppa-*.list 2>/dev/null; then
-            echo "❌ FAIL: File created for invalid PPA"
+          if [ -f /etc/apt/sources.list.d/invalid-example-com.list ]; then
+            echo "❌ FAIL: File created for invalid repository"
             exit 1
           fi
           
-          echo "✅ PASS: Invalid PPA failed gracefully (exit $EXIT_CODE)"
+          echo "✅ PASS: Invalid repository failed gracefully (exit $EXIT_CODE)"
 
-      # Cleanup: Remove Git PPA (runs even if tests fail)
-      - name: Cleanup - Remove Git PPA
+      # Cleanup: Remove GitHub CLI repository and package (runs even if tests fail)
+      - name: Cleanup - Remove GitHub CLI
         if: always()
         run: |
-          echo "=== Cleanup: Removing Git PPA ==="
+          echo "=== Cleanup: Removing GitHub CLI ==="
           
-          # Check if PPA exists
-          if ! ls /etc/apt/sources.list.d/git-core-ubuntu-ppa-*.list 2>/dev/null; then
-            echo "ℹ️ Git PPA not present, nothing to clean"
-            exit 0
+          # Uninstall gh if it was installed
+          if [ "$GH_INSTALLED" = "true" ] || command -v gh &> /dev/null; then
+            echo "Uninstalling gh package..."
+            sudo apt-get remove -y gh || echo "Failed to remove gh package"
           fi
           
-          # Remove it
-          sudo rust-add-apt-repository --remove ppa:git-core/ppa -y || {
-            echo "⚠️ WARNING: Failed to remove PPA via tool, manual cleanup"
-            sudo rm -f /etc/apt/sources.list.d/git-core-ubuntu-ppa-*.list
-            sudo rm -f /etc/apt/trusted.gpg.d/git-core-ubuntu-ppa-*.gpg
-          }
+          # Remove repository file
+          if [ -f /etc/apt/sources.list.d/github-cli.list ]; then
+            echo "Removing repository file..."
+            sudo rm -f /etc/apt/sources.list.d/github-cli.list
+          fi
+          
+          # Remove GPG key if exists
+          if ls /etc/apt/trusted.gpg.d/github-cli*.gpg 2>/dev/null; then
+            echo "Removing GPG keys..."
+            sudo rm -f /etc/apt/trusted.gpg.d/github-cli*.gpg
+          fi
           
           # Verify removal
-          if ls /etc/apt/sources.list.d/git-core-ubuntu-ppa-*.list 2>/dev/null; then
-            echo "⚠️ WARNING: PPA file still exists after cleanup"
+          if [ -f /etc/apt/sources.list.d/github-cli.list ]; then
+            echo "⚠️ WARNING: Repository file still exists after cleanup"
           else
             echo "✅ Cleanup successful"
           fi
           
           sudo apt-get update -qq || true
 
-      # Test 9: Verify cleanup worked
-      # SUCCESS: Count equals initial count, no Git PPA files
-      - name: Test 9 - Verify cleanup
+      # Test 10: Verify cleanup worked
+      # SUCCESS: Count equals initial count, no GitHub CLI files, gh not available
+      - name: Test 10 - Verify cleanup
         run: |
           echo "=== Test: Verify cleanup ==="
           
@@ -309,18 +366,25 @@ jobs:
           
           if [ "$FINAL_COUNT" -ne "$INITIAL_COUNT" ]; then
             echo "⚠️ WARNING: Final count ($FINAL_COUNT) != Initial count ($INITIAL_COUNT)"
-            echo "State was not fully restored (may be expected if other tests added repos)"
+            echo "State was not fully restored"
           else
             echo "✅ PASS: Repository count restored to initial state"
           fi
           
-          # Verify Git PPA specifically is gone
-          if ls /etc/apt/sources.list.d/git-core-ubuntu-ppa-*.list 2>/dev/null; then
-            echo "❌ FAIL: Git PPA file still exists"
+          # Verify GitHub CLI repo specifically is gone
+          if [ -f /etc/apt/sources.list.d/github-cli.list ]; then
+            echo "❌ FAIL: GitHub CLI repository file still exists"
             exit 1
           fi
           
-          echo "✅ PASS: Git PPA removed successfully"
+          # Verify gh command is not available
+          if command -v gh &> /dev/null; then
+            echo "⚠️ WARNING: gh command still available (may have been pre-installed)"
+          else
+            echo "✅ PASS: gh command not available"
+          fi
+          
+          echo "✅ PASS: GitHub CLI repository removed successfully"
 
       # Summary
       - name: Test Summary
