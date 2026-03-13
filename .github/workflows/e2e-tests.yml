@@ -159,9 +159,16 @@ jobs:
           # Note: rust-add-apt-repository doesn't support --key flag for custom URIs yet
           # We use /etc/apt/trusted.gpg.d/ (legacy global keyring) instead of /etc/apt/keyrings/
           # because the tool doesn't add [signed-by=...] to the sources.list entry
-          echo "Importing GitHub CLI GPG key..."
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
-            sudo tee /etc/apt/trusted.gpg.d/githubcli-archive-keyring.gpg > /dev/null
+          KEY_FILE="/etc/apt/trusted.gpg.d/githubcli-archive-keyring.gpg"
+          
+          if [ -f "$KEY_FILE" ]; then
+            echo "✅ GPG key already exists at $KEY_FILE (idempotent)"
+          else
+            echo "Importing GitHub CLI GPG key to $KEY_FILE..."
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
+              sudo tee "$KEY_FILE" > /dev/null
+            echo "✅ GPG key imported successfully"
+          fi
           
           # Add the repository using our tool
           sudo rust-add-apt-repository \
@@ -348,9 +355,10 @@ jobs:
           fi
           
           # Remove GPG key if exists
-          if ls /etc/apt/trusted.gpg.d/github-cli*.gpg 2>/dev/null; then
-            echo "Removing GPG keys..."
-            sudo rm -f /etc/apt/trusted.gpg.d/github-cli*.gpg
+          KEY_FILE="/etc/apt/trusted.gpg.d/githubcli-archive-keyring.gpg"
+          if [ -f "$KEY_FILE" ]; then
+            echo "Removing GPG key: $KEY_FILE"
+            sudo rm -f "$KEY_FILE"
           fi
           
           # Verify removal
