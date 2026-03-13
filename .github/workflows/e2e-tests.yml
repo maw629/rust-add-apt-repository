@@ -340,7 +340,8 @@ jobs:
           fi
           
           # Verify no file was created
-          if [ -f /etc/apt/sources.list.d/invalid-example-com.list ]; then
+          # Note: Tool would generate filename: invalid_example_com_nonexistent.list
+          if [ -f /etc/apt/sources.list.d/invalid_example_com_nonexistent.list ]; then
             echo "❌ FAIL: File created for invalid repository"
             exit 1
           fi
