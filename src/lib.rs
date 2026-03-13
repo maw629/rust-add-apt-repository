@@ -33,6 +33,9 @@ pub fn run() -> Result<()> {
         debug::log_args(&args);
     }
 
+    // Validate key flags early
+    args.validate_key_flags()?;
+
     // Handle list mode (doesn't require root)
     if args.repo_spec.list {
         debug_log!("Listing repositories");
@@ -149,7 +152,23 @@ fn add_repository(repo_spec: &str, args: &Cli) -> Result<()> {
     } else if let Some(uri) = &args.repo_spec.uri {
         // URI shortcut
         let dist = args.dist.as_deref();
-        parse_uri_shortcut(uri, dist, &args.component, args.enable_source > 0)?
+        let mut repo = parse_uri_shortcut(uri, dist, &args.component, args.enable_source > 0)?;
+
+        // Attach key information if provided
+        if let Some(key_url) = &args.key {
+            debug_log!("Key URL provided: {}", key_url);
+            repo.key_url = Some(key_url.clone());
+        } else if let Some(keyring) = &args.keyring {
+            debug_log!("Keyring file provided: {}", keyring);
+            repo.keyring_path = Some(PathBuf::from(keyring));
+        } else if let Some(key_id) = &args.key_id {
+            debug_log!("Key ID provided: {}", key_id);
+            // We'll fetch the key in the import logic
+            // For now, just store it as key_data placeholder
+            repo.key_data = Some(key_id.clone());
+        }
+
+        repo
     } else if let Some(lines) = &args.repo_spec.sourceslist {
         // Sources.list line format
         parse_sourceslist_line(&lines.join(" "))?
@@ -281,7 +300,7 @@ fn add_repository(repo_spec: &str, args: &Cli) -> Result<()> {
         println!("\nRepository added successfully.");
 
         // Handle GPG key if provided
-        if repo.key_data.is_some() || repo.key_url.is_some() {
+        if repo.key_data.is_some() || repo.key_url.is_some() || repo.keyring_path.is_some() {
             println!("\nImporting GPG key...");
 
             let keyring_filename = gpg::generate_keyring_filename(
@@ -292,10 +311,43 @@ fn add_repository(repo_spec: &str, args: &Cli) -> Result<()> {
             );
             let keyring_path = gpg::get_keyring_path(&keyring_filename);
 
-            let fingerprints = if let Some(key_data) = &repo.key_data {
-                gpg::import_key(key_data, &keyring_path)?
+            let fingerprints = if let Some(keyring_file) = &repo.keyring_path {
+                // Import from local keyring file
+                debug_log!("Importing from local keyring file: {:?}", keyring_file);
+
+                // Read the keyring file
+                let key_data = std::fs::read_to_string(keyring_file)
+                    .or_else(|_| {
+                        // Try reading as binary and converting
+                        std::fs::read(keyring_file)
+                            .map(|bytes| String::from_utf8_lossy(&bytes).to_string())
+                    })
+                    .map_err(|e| {
+                        AppError::General(format!(
+                            "Failed to read keyring file {}: {}",
+                            keyring_file.display(),
+                            e
+                        ))
+                    })?;
+
+                gpg::import_key(&key_data, &keyring_path)?
             } else if let Some(key_url) = &repo.key_url {
+                // Download and import from URL
+                debug_log!("Downloading key from URL: {}", key_url);
                 gpg::import_key_from_url(key_url, &keyring_path)?
+            } else if let Some(key_id) = &repo.key_data {
+                // Fetch from keyserver by ID
+                debug_log!("Fetching key from keyserver by ID: {}", key_id);
+                println!("Fetching GPG key {} from keyserver...", key_id);
+
+                let key_data = ppa::fetch_ppa_key(key_id).map_err(|e| {
+                    AppError::General(format!(
+                        "Failed to fetch key {} from keyserver: {}",
+                        key_id, e
+                    ))
+                })?;
+
+                gpg::import_key(&key_data, &keyring_path)?
             } else {
                 Vec::new()
             };

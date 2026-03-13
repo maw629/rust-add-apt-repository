@@ -77,6 +77,30 @@ pub struct Cli {
     #[arg(long)]
     pub dry_run: bool,
 
+    /// GPG key URL to download and import
+    ///
+    /// Download a GPG key from the specified URL and import it to the system keyring.
+    /// Only works with --uri (not with PPA or Cloud Archive).
+    /// Example: --key https://cli.github.com/packages/githubcli-archive-keyring.gpg
+    #[arg(long, value_name = "URL", conflicts_with_all = ["keyring", "key_id"])]
+    pub key: Option<String>,
+
+    /// GPG keyring file to import
+    ///
+    /// Import a GPG key from a local file to the system keyring.
+    /// Only works with --uri (not with PPA or Cloud Archive).
+    /// Example: --keyring /usr/share/keyrings/example.gpg
+    #[arg(long, value_name = "FILE", conflicts_with_all = ["key", "key_id"])]
+    pub keyring: Option<String>,
+
+    /// GPG key ID to fetch from keyserver
+    ///
+    /// Fetch a GPG key from Ubuntu keyserver by its key ID (short, long, or fingerprint).
+    /// Only works with --uri (not with PPA or Cloud Archive).
+    /// Example: --key-id 23F3D4EA75716059
+    #[arg(long, value_name = "KEY_ID", conflicts_with_all = ["key", "keyring"])]
+    pub key_id: Option<String>,
+
     /// Repository specification (mutually exclusive group)
     #[command(flatten)]
     pub repo_spec: RepoSpec,
@@ -148,5 +172,80 @@ impl Cli {
                 "No repository specified. Use --uri, --sourceslist, --ppa, --cloud, or provide a line.".to_string()
             ))
         }
+    }
+
+    /// Validate key-related arguments
+    pub fn validate_key_flags(&self) -> crate::error::Result<()> {
+        // Check if any key flag is specified
+        let has_key_flag = self.key.is_some() || self.keyring.is_some() || self.key_id.is_some();
+
+        if !has_key_flag {
+            return Ok(()); // No key flags, nothing to validate
+        }
+
+        // Key flags should only be used with --uri
+        if self.repo_spec.ppa.is_some() {
+            return Err(crate::error::AppError::InvalidInput(
+                "Key flags (--key, --keyring, --key-id) cannot be used with PPA. PPAs automatically fetch keys from Launchpad.".to_string()
+            ));
+        }
+
+        if self.repo_spec.cloud.is_some() {
+            return Err(crate::error::AppError::InvalidInput(
+                "Key flags (--key, --keyring, --key-id) cannot be used with Cloud Archive. Cloud Archive uses ubuntu-cloud-keyring package.".to_string()
+            ));
+        }
+
+        if self.repo_spec.uri.is_none() {
+            return Err(crate::error::AppError::InvalidInput(
+                "Key flags (--key, --keyring, --key-id) require --uri to specify the repository."
+                    .to_string(),
+            ));
+        }
+
+        // Validate keyring file exists if --keyring is used
+        if let Some(keyring_path) = &self.keyring {
+            let path = std::path::Path::new(keyring_path);
+            if !path.exists() {
+                return Err(crate::error::AppError::InvalidInput(format!(
+                    "Keyring file not found: {}",
+                    keyring_path
+                )));
+            }
+            if !path.is_file() {
+                return Err(crate::error::AppError::InvalidInput(format!(
+                    "Keyring path is not a file: {}",
+                    keyring_path
+                )));
+            }
+        }
+
+        // Validate key ID format if --key-id is used
+        if let Some(key_id) = &self.key_id {
+            let cleaned = key_id.trim().replace(' ', "").to_uppercase();
+
+            // Key ID should be 8, 16, or 40 hex characters (short, long, or fingerprint)
+            let valid_lengths = [8, 16, 40];
+            if !valid_lengths.contains(&cleaned.len()) {
+                return Err(crate::error::AppError::InvalidInput(
+                    format!(
+                        "Invalid key ID format: '{}'. Key ID should be 8, 16, or 40 hexadecimal characters.",
+                        key_id
+                    )
+                ));
+            }
+
+            // Check if all characters are hex
+            if !cleaned.chars().all(|c| c.is_ascii_hexdigit()) {
+                return Err(crate::error::AppError::InvalidInput(
+                    format!(
+                        "Invalid key ID format: '{}'. Key ID must contain only hexadecimal characters (0-9, A-F).",
+                        key_id
+                    )
+                ));
+            }
+        }
+
+        Ok(())
     }
 }
