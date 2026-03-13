@@ -86,7 +86,8 @@ jobs:
           fi
           
           # Record if GitHub CLI repo already exists (for idempotency)
-          if [ -f /etc/apt/sources.list.d/github-cli.list ]; then
+          # Note: Tool generates filename from URI: cli_github_com_packages.list
+          if [ -f /etc/apt/sources.list.d/cli_github_com_packages.list ]; then
             echo "GH_REPO_PRE_EXISTS=true" >> $GITHUB_ENV
             echo "⚠️ GitHub CLI repo already exists (workflow not starting clean)"
           else
@@ -163,11 +164,13 @@ jobs:
           
           if [ -f "$KEY_FILE" ]; then
             echo "✅ GPG key already exists at $KEY_FILE (idempotent)"
+            echo "KEY_IMPORTED=false" >> $GITHUB_ENV
           else
             echo "Importing GitHub CLI GPG key to $KEY_FILE..."
             curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
               sudo tee "$KEY_FILE" > /dev/null
             echo "✅ GPG key imported successfully"
+            echo "KEY_IMPORTED=true" >> $GITHUB_ENV
           fi
           
           # Add the repository using our tool
@@ -184,22 +187,24 @@ jobs:
           fi
           
           # Verify file was created
-          if [ ! -f /etc/apt/sources.list.d/github-cli.list ]; then
-            echo "❌ FAIL: Repository file not created"
+          # Note: Tool generates filename from URI: cli_github_com_packages.list
+          REPO_FILE="/etc/apt/sources.list.d/cli_github_com_packages.list"
+          if [ ! -f "$REPO_FILE" ]; then
+            echo "❌ FAIL: Repository file not created at $REPO_FILE"
             ls -la /etc/apt/sources.list.d/
             exit 1
           fi
           
           # Verify file contains expected content
-          if ! grep -q "cli.github.com/packages" /etc/apt/sources.list.d/github-cli.list; then
+          if ! grep -q "cli.github.com/packages" "$REPO_FILE"; then
             echo "❌ FAIL: Repository file doesn't contain expected URL"
-            cat /etc/apt/sources.list.d/github-cli.list
+            cat "$REPO_FILE"
             exit 1
           fi
           
           echo "✅ PASS: Repository added successfully"
-          echo "File: /etc/apt/sources.list.d/github-cli.list"
-          cat /etc/apt/sources.list.d/github-cli.list
+          echo "File: $REPO_FILE"
+          cat "$REPO_FILE"
           echo "REPO_ADDED=true" >> $GITHUB_ENV
           
           # Update package lists
@@ -349,20 +354,24 @@ jobs:
           fi
           
           # Remove repository file
-          if [ -f /etc/apt/sources.list.d/github-cli.list ]; then
-            echo "Removing repository file..."
-            sudo rm -f /etc/apt/sources.list.d/github-cli.list
+          REPO_FILE="/etc/apt/sources.list.d/cli_github_com_packages.list"
+          if [ -f "$REPO_FILE" ]; then
+            echo "Removing repository file: $REPO_FILE"
+            sudo rm -f "$REPO_FILE"
           fi
           
-          # Remove GPG key if exists
+          # Remove GPG key ONLY if we imported it (don't touch pre-existing keys)
           KEY_FILE="/etc/apt/trusted.gpg.d/githubcli-archive-keyring.gpg"
-          if [ -f "$KEY_FILE" ]; then
-            echo "Removing GPG key: $KEY_FILE"
+          if [ "$KEY_IMPORTED" = "true" ] && [ -f "$KEY_FILE" ]; then
+            echo "Removing GPG key (we imported it): $KEY_FILE"
             sudo rm -f "$KEY_FILE"
+          elif [ "$KEY_IMPORTED" = "false" ]; then
+            echo "Preserving pre-existing GPG key: $KEY_FILE"
           fi
           
           # Verify removal
-          if [ -f /etc/apt/sources.list.d/github-cli.list ]; then
+          REPO_FILE="/etc/apt/sources.list.d/cli_github_com_packages.list"
+          if [ -f "$REPO_FILE" ]; then
             echo "⚠️ WARNING: Repository file still exists after cleanup"
           else
             echo "✅ Cleanup successful"
