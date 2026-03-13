@@ -124,8 +124,8 @@ jobs:
         run: |
           echo "=== Test: Dry-run mode ==="
           
-          # Run dry-run add
-          rust-add-apt-repository ppa:deadsnakes/ppa --dry-run
+          # Run dry-run add (still needs sudo to avoid permission check, but won't modify system)
+          sudo rust-add-apt-repository --dry-run ppa:deadsnakes/ppa
           EXIT_CODE=$?
           
           if [ $EXIT_CODE -ne 0 ]; then
