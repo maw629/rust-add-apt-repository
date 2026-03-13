@@ -80,17 +80,39 @@ pub fn import_key(key_data: &str, keyring_path: &Path) -> Result<Vec<KeyFingerpr
     Ok(fingerprints)
 }
 
-/// Import a GPG key from a URL
+/// Import a GPG key from a URL (handles both ASCII-armored and binary keys)
 pub fn import_key_from_url(url: &str, keyring_path: &Path) -> Result<Vec<KeyFingerprint>> {
-    // Download the key
-    let key_data = download_key(url)?;
+    // Download the key as raw bytes
+    let key_bytes = download_key(url)?;
 
-    // Import it
-    import_key(&key_data, keyring_path)
+    // Try to detect if it's ASCII-armored or binary
+    // ASCII-armored keys start with "-----BEGIN PGP PUBLIC KEY BLOCK-----"
+    let is_ascii = key_bytes
+        .get(0..5)
+        .map(|prefix| prefix == b"-----")
+        .unwrap_or(false);
+
+    if is_ascii {
+        // ASCII-armored key - use existing import_key() which expects string
+        let key_data = String::from_utf8_lossy(&key_bytes).to_string();
+        import_key(&key_data, keyring_path)
+    } else {
+        // Binary key - write directly to keyring without dearmoring
+        fs::write(keyring_path, &key_bytes)?;
+
+        // Set proper permissions (0644)
+        let permissions = fs::Permissions::from_mode(0o644);
+        fs::set_permissions(keyring_path, permissions)?;
+
+        // Extract fingerprints from the imported key
+        let fingerprints = extract_fingerprints_from_keyring(keyring_path)?;
+
+        Ok(fingerprints)
+    }
 }
 
-/// Download a GPG key from a URL
-fn download_key(url: &str) -> Result<String> {
+/// Download a GPG key from a URL (handles both ASCII and binary keys)
+fn download_key(url: &str) -> Result<Vec<u8>> {
     let output = Command::new("curl").arg("-fsSL").arg(url).output()?;
 
     if !output.status.success() {
@@ -101,7 +123,7 @@ fn download_key(url: &str) -> Result<String> {
         )));
     }
 
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    Ok(output.stdout)
 }
 
 /// Extract fingerprints from a keyring file
