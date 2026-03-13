@@ -17,8 +17,9 @@ This guide covers installation methods for `rust-add-apt-repository` on Debian a
 Download and install the pre-built binary:
 
 ```bash
-# Download the latest release
-wget https://github.com/maw629/rust-add-apt-repository/releases/download/v0.1.0/rust-add-apt-repository
+# Download the latest release (check GitHub releases for current version)
+# https://github.com/maw629/rust-add-apt-repository/releases/latest
+wget https://github.com/maw629/rust-add-apt-repository/releases/latest/download/rust-add-apt-repository
 
 # Make executable
 chmod +x rust-add-apt-repository
@@ -33,8 +34,9 @@ rust-add-apt-repository --version
 ### Install Man Page (Optional)
 
 ```bash
-# Download man page
-wget https://github.com/maw629/rust-add-apt-repository/releases/download/v0.1.0/rust-add-apt-repository.1
+# Download man page (check GitHub releases for current version)
+# https://github.com/maw629/rust-add-apt-repository/releases/latest
+wget https://github.com/maw629/rust-add-apt-repository/releases/latest/download/rust-add-apt-repository.1
 
 # Install man page
 sudo mkdir -p /usr/local/share/man/man1
@@ -414,8 +416,9 @@ sudo dpkg -i rust-add-apt-repository_0.1.0-1_amd64.deb
 ### Upgrade Binary Installation
 
 ```bash
-# Download new version
-wget https://github.com/maw629/rust-add-apt-repository/releases/download/v0.2.0/rust-add-apt-repository
+# Download new version (check GitHub releases)
+# https://github.com/maw629/rust-add-apt-repository/releases/latest
+wget https://github.com/maw629/rust-add-apt-repository/releases/latest/download/rust-add-apt-repository
 
 # Replace existing
 sudo install -m 755 rust-add-apt-repository /usr/local/bin/
@@ -424,11 +427,12 @@ sudo install -m 755 rust-add-apt-repository /usr/local/bin/
 ### Upgrade Debian Package
 
 ```bash
-# Download new package
-wget https://github.com/maw629/rust-add-apt-repository/releases/download/v0.2.0/rust-add-apt-repository_0.2.0-1_amd64.deb
+# Download new package (check GitHub releases for current version)
+# https://github.com/maw629/rust-add-apt-repository/releases/latest
+# Example: wget https://github.com/maw629/rust-add-apt-repository/releases/download/v0.2.1/rust-add-apt-repository_0.2.1-1_amd64.deb
 
 # Upgrade
-sudo dpkg -i rust-add-apt-repository_0.2.0-1_amd64.deb
+sudo dpkg -i rust-add-apt-repository_*.deb
 ```
 
 ## Getting Help

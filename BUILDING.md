@@ -260,7 +260,7 @@ After successful build, the .deb package will be in the parent directory:
 ls -lh ../*.deb
 ```
 
-You should see a file like: `rust-add-apt-repository_0.2.0-1_amd64.deb`
+You should see a file like: `rust-add-apt-repository_0.2.1-1_amd64.deb` (version may vary)
 
 #### 4. Install the Package
 
