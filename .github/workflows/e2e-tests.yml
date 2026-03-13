@@ -156,28 +156,23 @@ jobs:
             exit 0
           fi
           
-          # Import GitHub CLI GPG key (required before adding repo)
-          # Note: rust-add-apt-repository doesn't support --key flag for custom URIs yet
-          # We use /etc/apt/trusted.gpg.d/ (legacy global keyring) instead of /etc/apt/keyrings/
-          # because the tool doesn't add [signed-by=...] to the sources.list entry
-          KEY_FILE="/etc/apt/trusted.gpg.d/githubcli-archive-keyring.gpg"
-          
+          # Check if key was already imported (for idempotency tracking)
+          KEY_FILE="/etc/apt/trusted.gpg.d/cli_github_com_packages-archive-keyring.gpg"
           if [ -f "$KEY_FILE" ]; then
             echo "✅ GPG key already exists at $KEY_FILE (idempotent)"
             echo "KEY_IMPORTED=false" >> $GITHUB_ENV
           else
-            echo "Importing GitHub CLI GPG key to $KEY_FILE..."
-            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
-              sudo tee "$KEY_FILE" > /dev/null
-            echo "✅ GPG key imported successfully"
+            echo "GPG key will be imported by --key flag"
             echo "KEY_IMPORTED=true" >> $GITHUB_ENV
           fi
           
-          # Add the repository using our tool
+          # Add the repository using our tool with --key flag
+          # The --key flag downloads and imports the GPG key automatically
           sudo rust-add-apt-repository \
             --uri https://cli.github.com/packages \
             --dist stable \
             --component main \
+            --key https://cli.github.com/packages/githubcli-archive-keyring.gpg \
             -y
           EXIT_CODE=$?
           
@@ -236,7 +231,7 @@ jobs:
           fi
 
       # Test 6: Verify GPG key was imported
-      # SUCCESS: Key file exists (or Signed-By in sources file)
+      # SUCCESS: Key file exists at expected location
       - name: Test 6 - Verify GPG key handling
         run: |
           echo "=== Test: GPG key handling ==="
@@ -246,21 +241,27 @@ jobs:
             exit 0
           fi
           
-          # Check if repository file has GPG key info (either Signed-By or system keyring)
-          REPO_FILE="/etc/apt/sources.list.d/cli_github_com_packages.list"
-          KEY_FILE="/etc/apt/trusted.gpg.d/githubcli-archive-keyring.gpg"
+          # The --key flag should have imported the key to the global keyring
+          # Key filename is generated from repository URI
+          KEY_FILE="/etc/apt/trusted.gpg.d/cli_github_com_packages-archive-keyring.gpg"
           
-          if grep -q "signed-by" "$REPO_FILE" 2>/dev/null || [ -f "$KEY_FILE" ]; then
-            echo "✅ PASS: GPG key handling configured"
-            if [ -f "$KEY_FILE" ]; then
-              echo "Key file: $KEY_FILE"
-              ls -lh "$KEY_FILE"
-            fi
+          if [ -f "$KEY_FILE" ]; then
+            echo "✅ PASS: GPG key imported by --key flag"
+            echo "Key file: $KEY_FILE"
+            ls -lh "$KEY_FILE"
           else
-            echo "⚠️ Note: No explicit GPG key found (may use system keyring)"
-            echo "Repository file content:"
-            cat "$REPO_FILE"
+            echo "❌ FAIL: GPG key not found at expected location"
+            echo "Expected: $KEY_FILE"
+            echo "Available keys:"
+            ls -lh /etc/apt/trusted.gpg.d/
+            exit 1
           fi
+          
+          # Show repository file content for verification
+          REPO_FILE="/etc/apt/sources.list.d/cli_github_com_packages.list"
+          echo ""
+          echo "Repository file content:"
+          cat "$REPO_FILE"
 
       # Test 7: Verify gh package is available
       # SUCCESS: apt-cache shows gh package is available
@@ -382,7 +383,7 @@ jobs:
           fi
           
           # Remove GPG key ONLY if we imported it (don't touch pre-existing keys)
-          KEY_FILE="/etc/apt/trusted.gpg.d/githubcli-archive-keyring.gpg"
+          KEY_FILE="/etc/apt/trusted.gpg.d/cli_github_com_packages-archive-keyring.gpg"
           if [ "$KEY_IMPORTED" = "true" ] && [ -f "$KEY_FILE" ]; then
             echo "Removing GPG key (we imported it): $KEY_FILE"
             sudo rm -f "$KEY_FILE"
